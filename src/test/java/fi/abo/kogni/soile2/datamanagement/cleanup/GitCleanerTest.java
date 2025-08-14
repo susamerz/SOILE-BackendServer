@@ -12,7 +12,7 @@ import fi.abo.kogni.soile2.projecthandling.projectElements.impl.ElementManager;
 import fi.abo.kogni.soile2.projecthandling.projectElements.impl.Task;
 import fi.abo.kogni.soile2.utils.SoileConfigLoader;
 import fi.abo.kogni.soile2.utils.WebObjectCreator;
-import io.vertx.core.http.impl.MimeMapping;
+import io.vertx.core.http.MimeMapping;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -35,7 +35,7 @@ public class GitCleanerTest extends SoileWebTest{
 			.onSuccess( taskData -> {
 				String taskID = taskData.getString("UUID");
 				postTaskRessource(session, taskID , taskData.getString("version"), "Video.mp4",
-						new File(Path.of(TestDataFolder, "Video.mp4").toString()) , MimeMapping.getMimeTypeForFilename("Video.mp4") )										
+						new File(Path.of(TestDataFolder, "Video.mp4").toString()) , MimeMapping.mimeTypeForFilename("Video.mp4") )										
 				.onSuccess( newVersion -> {		
 					taskManager.getVersionListForElement(taskData.getString("UUID"))
 					.onSuccess(versionList -> {
@@ -96,7 +96,7 @@ public class GitCleanerTest extends SoileWebTest{
 			.onSuccess( taskData -> {
 				String taskID = taskData.getString("UUID");
 				postTaskRessource(session, taskID , taskData.getString("version"), "Video.mp4",
-						new File(Path.of(TestDataFolder, "Video.mp4").toString()) , MimeMapping.getMimeTypeForFilename("Video.mp4") )										
+						new File(Path.of(TestDataFolder, "Video.mp4").toString()) , MimeMapping.mimeTypeForFilename("Video.mp4") )										
 				.onSuccess( newVersion -> {		
 					taskManager.getVersionListForElement(taskData.getString("UUID"))
 					.onSuccess(versionList -> {
@@ -152,7 +152,7 @@ public class GitCleanerTest extends SoileWebTest{
 			.onSuccess( taskData -> {
 				String taskID = taskData.getString("UUID");
 				postTaskRessource(session, taskID , taskData.getString("version"), "Video.mp4",
-						new File(Path.of(TestDataFolder, "Video.mp4").toString()) , MimeMapping.getMimeTypeForFilename("Video.mp4") )										
+						new File(Path.of(TestDataFolder, "Video.mp4").toString()) , MimeMapping.mimeTypeForFilename("Video.mp4") )										
 				.onSuccess( newVersion -> {		
 					taskManager.getVersionListForElement(taskData.getString("UUID"))
 					.onSuccess(versionList -> {						
