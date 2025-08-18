@@ -2,8 +2,8 @@ package fi.abo.kogni.soile2.http_server.userManagement;
 
 import java.util.Map;
 
-import io.vertx.ext.auth.HashingAlgorithm;
-import io.vertx.ext.auth.HashingStrategy;
+import io.vertx.ext.auth.hashing.HashingAlgorithm;
+import io.vertx.ext.auth.hashing.HashingStrategy;
 
 /**
  * This is a simple Hashing Strategy, that adds a Server Salt to the individual salts for each password.

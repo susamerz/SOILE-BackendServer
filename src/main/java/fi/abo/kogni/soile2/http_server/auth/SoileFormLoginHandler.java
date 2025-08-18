@@ -15,6 +15,7 @@ import io.vertx.ext.auth.authentication.AuthenticationProvider;
 import io.vertx.ext.auth.authentication.UsernamePasswordCredentials;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.HttpException;
+import io.vertx.ext.web.impl.UserContextInternal;
 
 /**
  * Form Login handler
@@ -107,7 +108,7 @@ public class SoileFormLoginHandler extends SoileAuthHandler {
 				if (username == null || password == null) {
 					handler.handle(Future.failedFuture(BAD_REQUEST));
 				} else {
-					authProvider.authenticate(new UsernamePasswordCredentials(username, password), authn -> {
+					authProvider.authenticate(new UsernamePasswordCredentials(username, password)).andThen(authn -> {
 						if (authn.failed()) {
 							handler.handle(Future.failedFuture(new HttpException(401, authn.cause())));
 						} else {

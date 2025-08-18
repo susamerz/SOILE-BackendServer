@@ -16,7 +16,7 @@ import fi.abo.kogni.soile2.http_server.SoileWebTest;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.http.impl.MimeMapping;
+import io.vertx.core.http.MimeMapping;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClientSession;
@@ -71,7 +71,7 @@ public class WebObjectCreator {
 				LOGGER.debug("Task " + elementID + " Initialized: " + TaskJson.getString("UUID") + "@" + TaskJson.getString("version"));
 				String taskID = TaskJson.getString("UUID");
 				JsonArray resources = TaskDef.getJsonArray("resources", new JsonArray());
-				List<Future> composite = new LinkedList<>();
+				List<Future<String>> composite = new LinkedList<>();
 				Promise<String> versionPromise = Promise.promise();
 				Future<String> versionFuture = versionPromise.future();
 				LinkedList<Future<String>> chain = new LinkedList<>();
@@ -83,12 +83,12 @@ public class WebObjectCreator {
 					chain.add(chain.getLast().compose(newVersion -> {	
 						
 						return SoileWebTest.postTaskRessource(webClient, taskID, newVersion, resourceName,
-																new File(Path.of(TestDataFolder, resourceName).toString()) , MimeMapping.getMimeTypeForFilename(resourceName) );										
+																new File(Path.of(TestDataFolder, resourceName).toString()) , MimeMapping.mimeTypeForFilename(resourceName) );										
 					}));
 					composite.add(chain.getLast());
 				}
 				versionPromise.complete(TaskJson.getString("version"));
-				CompositeFuture.all(composite)
+				Future.all(composite)
 				.onSuccess(done -> {					
 					chain.getLast().onSuccess(latestVersion ->
 					{
@@ -172,7 +172,7 @@ public class WebObjectCreator {
 				String id = experimentJson.getString("UUID");
 				String version = experimentJson.getString("version");								
 				ConcurrentHashMap<String, JsonObject> elements = new ConcurrentHashMap<String, JsonObject>();
-				List<Future> partFutures = new LinkedList<Future>();
+				List<Future<Void>> partFutures = new LinkedList<Future<Void>>();
 				for(Object item : ExperimentDef.getJsonArray("items"))
 				{
 					JsonObject current = (JsonObject) item;
@@ -189,7 +189,7 @@ public class WebObjectCreator {
 									taskInstance.remove("code");
 									elements.put(current.getString("instanceID"), new JsonObject().put("elementType", "task")
 											.put("data",taskInstance));
-								})
+								}).mapEmpty()
 								);
 					}
 					if(current.getString("type").equals("filter"))
@@ -216,13 +216,13 @@ public class WebObjectCreator {
 									elements.put(current.getString("instanceID"), 
 											new JsonObject().put("elementType", "experiment")
 											.put("data", experimentInstance));
-								})
+								}).mapEmpty()
 								);
 
 					}
 				}
 				//deploymentFutures.add(Future.<String>future(promise -> vertx.deployVerticle("js:templateManager.js", opts, promise)));
-				CompositeFuture.all(partFutures).mapEmpty().onSuccess(Void -> {
+				Future.all(partFutures).mapEmpty().onSuccess(Void -> {
 					// once all is done, we put it in in the right order.
 					JsonArray items = experimentJson.getJsonArray("elements");
 					for(Object item : ExperimentDef.getJsonArray("items"))
@@ -282,7 +282,7 @@ public class WebObjectCreator {
 				JsonArray projectRandomizers = projectJson.getJsonArray("randomizers");
 				JsonArray projectExperiments = projectJson.getJsonArray("experiments");
 				ConcurrentHashMap<String, JsonObject> tasks = new ConcurrentHashMap<String, JsonObject>();
-				List<Future> taskFutures = new LinkedList<Future>();
+				List<Future<Void>> taskFutures = new LinkedList<Future<Void>>();
 				for(Object item : projectDef.getJsonArray("tasks"))
 				{
 					JsonObject current = (JsonObject) item;
@@ -299,10 +299,10 @@ public class WebObjectCreator {
 								newTask.put("version", task.getString("version"));
 								newTask.put("codeType", task.getJsonObject("codeType"));								
 								tasks.put(current.getString("instanceID"), newTask);
-							})
+							}).mapEmpty()
 					);
 				}
-				CompositeFuture.all(taskFutures).mapEmpty().onSuccess(Void -> {
+				Future.all(taskFutures).mapEmpty().onSuccess(Void -> {
 					// all tasks created. now we add them to the project;
 					LinkedList<JsonObject> taskList = new LinkedList<JsonObject>();
 					taskList.addAll(tasks.values());
@@ -310,7 +310,7 @@ public class WebObjectCreator {
 					projectTasks.addAll(taskArray);
 					// and now we do the experiments. Since they could in theory refer back to the same unique tasks, we need to have created the tasks first.
 					ConcurrentHashMap<String, JsonObject> experiments = new ConcurrentHashMap<String, JsonObject>();
-					List<Future> experimentFutures = new LinkedList<Future>();
+					List<Future<Void>> experimentFutures = new LinkedList<Future<Void>>();
 					// and for filters. This should work even without					
 					for(Object item : projectDef.getJsonArray("filters", new JsonArray()))
 					{
@@ -335,11 +335,11 @@ public class WebObjectCreator {
 									experiments.put(current.getString("instanceID"), experiment);
 									// update the links in the task/element IDs.
 									updateExperimentElementTargets(experiment);
-								})
+								}).mapEmpty()
 								);						
 					}
 					// once the futures are set up, wait for them do be done and then finish up.
-					CompositeFuture.all(experimentFutures).mapEmpty()
+					Future.all(experimentFutures).mapEmpty()
 					.onSuccess(Void2 -> {
 						LinkedList<JsonObject> expList = new LinkedList<JsonObject>();
 						expList.addAll(experiments.values());

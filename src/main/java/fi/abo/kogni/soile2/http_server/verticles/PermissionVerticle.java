@@ -46,12 +46,12 @@ public class PermissionVerticle extends AbstractVerticle {
 	public void stop(Promise<Void> stopPromise)
 	{
 		@SuppressWarnings("rawtypes")
-		List<Future> undeploymentFutures = new LinkedList<Future>();
+		List<Future<Void>> undeploymentFutures = new LinkedList<Future<Void>>();
 		for(MessageConsumer<JsonObject> consumer : consumers)
 		{
 			undeploymentFutures.add(consumer.unregister());
 		}				
-		CompositeFuture.all(undeploymentFutures).mapEmpty().
+		Future.all(undeploymentFutures).mapEmpty().
 		onSuccess(v -> {
 			stopPromise.complete();
 		})

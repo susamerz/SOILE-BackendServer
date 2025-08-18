@@ -1,5 +1,6 @@
 package fi.abo.kogni.soile2.projecthandling.utils;
 
+import io.vertx.core.Future;
 import io.vertx.ext.web.FileUpload;
 
 /**
@@ -64,6 +65,10 @@ public class SimpleFileUpload implements FileUpload
 	@Override
 	public boolean cancel() {
 		return false;
+	}
+	@Override
+	public Future<Void> delete() {		
+		return Future.succeededFuture();
 	}
 	
 }

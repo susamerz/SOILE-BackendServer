@@ -51,7 +51,7 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.http.HttpVersion;
-import io.vertx.core.http.impl.MimeMapping;
+import io.vertx.core.http.MimeMapping;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.web.Http2PushMapping;
 import io.vertx.ext.web.MIMEHeader;
@@ -266,7 +266,7 @@ public class NonStaticHandler implements StaticHandler {
 
     // verify if the file exists
     fileSystem
-        .exists(localFile, exists -> {
+        .exists(localFile).andThen(exists -> {
           if (exists.failed()) {
             if (!context.request().isEnded()) {
               context.request().resume();
@@ -367,7 +367,7 @@ public class NonStaticHandler implements StaticHandler {
 
   private void getFileProps(FileSystem fileSystem, String file, Handler<AsyncResult<FileProps>> resultHandler) {
     if (tune.useAsyncFS()) {
-      fileSystem.props(file, resultHandler);
+      fileSystem.props(file).andThen(resultHandler);
     } else {
       // Use synchronous access - it might well be faster!
       try {
@@ -456,7 +456,7 @@ public class NonStaticHandler implements StaticHandler {
         final long finalOffset = offset;
         final long finalLength = end + 1 - offset;
         // guess content type
-        String contentType = MimeMapping.getMimeTypeForFilename(file);
+        String contentType = io.vertx.core.http.MimeMapping.mimeTypeForFilename(file);
         if (contentType != null) {
           if (contentType.startsWith("text")) {
             response.putHeader(HttpHeaders.CONTENT_TYPE, contentType + ";charset=" + defaultContentEncoding);
@@ -465,7 +465,7 @@ public class NonStaticHandler implements StaticHandler {
           }
         }
 
-        response.sendFile(file, finalOffset, finalLength, res2 -> {
+        response.sendFile(file, finalOffset, finalLength).andThen(res2 -> {
           if (res2.failed()) {
             if (!context.request().isEnded()) {
               context.request().resume();
@@ -476,7 +476,7 @@ public class NonStaticHandler implements StaticHandler {
       } else {
         // guess content type
         String extension = getFileExtension(file);
-        String contentType = MimeMapping.getMimeTypeForExtension(extension);
+        String contentType = MimeMapping.mimeTypeForExtension(extension);
         if (compressedMediaTypes.contains(contentType) || compressedFileSuffixes.contains(extension)) {
           response.putHeader(HttpHeaders.CONTENT_ENCODING, HttpHeaders.IDENTITY);
         }
@@ -498,10 +498,10 @@ public class NonStaticHandler implements StaticHandler {
                 if (filePropsAsyncResult.succeeded()) {
                   // push
                   writeCacheHeaders(request, filePropsAsyncResult.result());
-                  response.push(HttpMethod.GET, "/" + dependency.getFilePath(), pushAsyncResult -> {
+                  response.push(HttpMethod.GET, "/" + dependency.getFilePath()).andThen(pushAsyncResult -> {
                     if (pushAsyncResult.succeeded()) {
                       HttpServerResponse res = pushAsyncResult.result();
-                      final String depContentType = MimeMapping.getMimeTypeForExtension(file);
+                      final String depContentType = MimeMapping.mimeTypeForExtension(file);
                       if (depContentType != null) {
                         if (depContentType.startsWith("text")) {
                           res.putHeader(HttpHeaders.CONTENT_TYPE, contentType + ";charset=" + defaultContentEncoding);
@@ -535,7 +535,7 @@ public class NonStaticHandler implements StaticHandler {
           response.putHeader("Link", links);
         }
 
-        response.sendFile(file, res2 -> {
+        response.sendFile(file).andThen(res2 -> {
           if (res2.failed()) {
             if (!context.request().isEnded()) {
               context.request().resume();
@@ -547,25 +547,7 @@ public class NonStaticHandler implements StaticHandler {
     }
   }
 
-  /**
-   * @deprecated - Use the parameters in constructor
-   */
-  @Override
-  @Deprecated
-  public StaticHandler setAllowRootFileSystemAccess(boolean allowRootFileSystemAccess) {
-    this.allowRootFileSystemAccess = allowRootFileSystemAccess;
-    return this;
-  }
 
-  /**
-   * @deprecated - Use the parameters in constructor
-   */
-  @Override
-  @Deprecated
-  public StaticHandler setWebRoot(String webRoot) {
-    setRoot(webRoot);
-    return this;
-  }
 
   @Override
   public StaticHandler setFilesReadOnly(boolean readOnly) {
@@ -718,7 +700,7 @@ public class NonStaticHandler implements StaticHandler {
   private void sendDirectoryListing(FileSystem fileSystem, String dir, RoutingContext context) {
     final HttpServerResponse response = context.response();
 
-    fileSystem.readDir(dir, asyncResult -> {
+    fileSystem.readDir(dir).andThen(asyncResult -> {
       if (asyncResult.failed()) {
         if (!context.request().isEnded()) {
           context.request().resume();

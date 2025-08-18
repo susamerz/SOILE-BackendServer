@@ -154,7 +154,7 @@ public class GitCleaner {
 		Promise<JsonArray> dataLakefileIDs = Promise.promise();																			
 		LinkedList<Future<JsonArray>> fileIDs = new LinkedList<>();
 		fileIDs.add(Future.succeededFuture(new JsonArray()));
-		List<Future> fileIDRequests = new LinkedList<>();
+		List<Future<JsonArray>> fileIDRequests = new LinkedList<>();
 		// if we don't have anything to clean, we need to make sure, that there is at least one future..
 		fileIDRequests.add(Future.succeededFuture());
 		for(int i = 0; i < taskVersions.size(); i++)
@@ -172,7 +172,8 @@ public class GitCleaner {
 			fileIDs.add(CurrentFuture);
 			fileIDRequests.add(CurrentFuture);										
 		}
-		CompositeFuture.all(fileIDRequests).onSuccess(done -> {
+		 
+		Future.all(fileIDRequests).onSuccess(done -> {
 			dataLakefileIDs.complete(fileIDs.getLast().result());
 		})
 		.onFailure(err -> dataLakefileIDs.fail(err));
@@ -190,7 +191,7 @@ public class GitCleaner {
 					JsonArray fileNames = getFileNamesForResources(files, "");			
 					LinkedList<Future<JsonArray>> fileIDs = new LinkedList<>();
 					fileIDs.add(Future.succeededFuture(new JsonArray()));
-					List<Future> fileIDRequests = new LinkedList<>();			
+					List<Future<JsonArray>> fileIDRequests = new LinkedList<>();			
 					// if we don't have anything to clean, we need to make sure, that there is at least one future..
 					fileIDRequests.add(Future.succeededFuture());
 					for(int i = 0; i < fileNames.size(); i++)
@@ -210,7 +211,7 @@ public class GitCleaner {
 						fileIDs.add(CurrentFuture);
 						fileIDRequests.add(CurrentFuture);										
 					}
-					CompositeFuture.all(fileIDRequests).onSuccess(done -> {
+					Future.all(fileIDRequests).onSuccess(done -> {
 						dataLakefileIDs.complete(fileIDs.getLast().result());
 					})
 					.onFailure(err -> dataLakefileIDs.fail(err));
@@ -270,7 +271,7 @@ public class GitCleaner {
 
 		LinkedList<Future<JsonArray>> histories = new LinkedList<>();
 		histories.add(Future.succeededFuture(new JsonArray()));
-		List<Future> historyRequests = new LinkedList<>();
+		List<Future<JsonArray>> historyRequests = new LinkedList<>();
 		// if we don't have anything to clean, we need to make sure, that there is at least one future..
 		historyRequests.add(Future.succeededFuture());
 		for(int i = 0; i < tagableVersions.size(); i++)
@@ -295,7 +296,7 @@ public class GitCleaner {
 			histories.add(CurrentFuture);
 			historyRequests.add(CurrentFuture);								
 		}
-		CompositeFuture.all(historyRequests).onSuccess(done -> {
+		Future.all(historyRequests).onSuccess(done -> {
 			retrievableTags.complete(histories.getLast().result());
 		})
 		.onFailure(err -> retrievableTags.fail(err));
@@ -324,14 +325,14 @@ public class GitCleaner {
 								versionPull)
 		.onSuccess(originalElement -> {
 				
-			List<Future> FileDeletionFutures = new LinkedList<>();
+			List<Future<Void>> FileDeletionFutures = new LinkedList<>();
 			// if we don't have anything to clean, we need to make sure, that there is at least one future..
 			FileDeletionFutures.add(Future.succeededFuture());
 			for(int i = 0; i < filesToDelete.size(); ++i)
 			{
 				FileDeletionFutures.add(drm.deleteDataLakeFile(taskID, filesToDelete.getString(i)));
 			}
-			CompositeFuture.all(FileDeletionFutures)
+			Future.all(FileDeletionFutures)
 			.onSuccess(filesDeleted -> {
 				LOGGER.debug("Cleanup done");
 				cleanupDone.complete();

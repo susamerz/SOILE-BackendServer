@@ -83,7 +83,7 @@ public class SoileCookieAuth {
 
 					LOGGER.debug("Trying to validate token:\n" + command.encodePrettily());					
 					vertx.eventBus()
-					.request("soile.umanager.checkUserSessionValid",command,
+					.request("soile.umanager.checkUserSessionValid",command).andThen(
 							res ->
 					{									
 						if(res.succeeded())
@@ -94,7 +94,7 @@ public class SoileCookieAuth {
 							{
 								JsonObject query = new JsonObject()
 										.put(SoileConfigLoader.getUserdbField("usernameField"), username);
-								client.find(SoileConfigLoader.getdbProperty("userCollection"), query, dbRes -> 
+								client.find(SoileConfigLoader.getdbProperty("userCollection"), query).andThen( dbRes -> 
 								{
 									//only resume the request, if we have finished loading everything here.							
 									

@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.vertx.core.http.impl.HttpUtils;
+import io.vertx.core.internal.net.RFC3986;
 import io.vertx.ext.web.client.spi.CookieStore;
 
 /**
@@ -28,7 +29,7 @@ public class DebugCookieStore implements CookieStore {
     assert domain != null && domain.length() > 0;
     String cleanPath;
     {
-      String uri = HttpUtils.removeDots(path);
+      String uri = RFC3986.removeDotSegments(path);
       // Remoe query params if present
       int pos = uri.indexOf('?');
       if (pos > -1) {

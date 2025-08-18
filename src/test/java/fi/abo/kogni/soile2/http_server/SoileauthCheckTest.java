@@ -36,7 +36,7 @@ public class SoileauthCheckTest extends SoileVerticleTest{
 					.put("remember","1");
 			WebClientSession session = createSession();			
 			vertx.eventBus().request("soile.umanager.addUser", 
-					userObject,res -> {
+					userObject).andThen(res -> {
 						if(res.succeeded())
 						{
 							//Now lets see if we can authenticate this.

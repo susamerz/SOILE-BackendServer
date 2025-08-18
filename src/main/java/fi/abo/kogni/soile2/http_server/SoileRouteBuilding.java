@@ -55,15 +55,23 @@ import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.AuthenticationHandler;
+import io.vertx.ext.web.handler.BasicAuthHandler;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.ChainAuthHandler;
 import io.vertx.ext.web.handler.CorsHandler;
+import io.vertx.ext.web.handler.DigestAuthHandler;
 import io.vertx.ext.web.handler.ErrorHandler;
 import io.vertx.ext.web.handler.JWTAuthHandler;
 import io.vertx.ext.web.handler.LoggerHandler;
-import io.vertx.ext.web.openapi.RouterBuilder;
+import io.vertx.ext.web.openapi.router.RouterBuilder;
+import io.vertx.ext.web.openapi.router.impl.RouterBuilderImpl;
 import io.vertx.ext.web.sstore.LocalSessionStore;
+<<<<<<< HEAD
 
+=======
+import io.vertx.openapi.contract.OpenAPIContract;
+import io.vertx.openapi.validation.RequestUtils;
+>>>>>>> c270e74 (Convert to vertx5)
 /**
  * Verticle that handles Route Building for the Soile Backend Platform
  * 
@@ -137,16 +145,19 @@ public class SoileRouteBuilding extends AbstractVerticle {
 	@SuppressWarnings("rawtypes")
 	public void stop(Promise<Void> stopPromise) {
 		soileRouter.clear();
-		List<Future> undeploymentFutures = new LinkedList<Future>();
-		for (MessageConsumer consumer : consumers) {
-			undeploymentFutures.add(consumer.unregister());
-		}
 
-		CompositeFuture.all(undeploymentFutures).mapEmpty().onSuccess(v -> stopPromise.complete())
-				.onFailure(err -> {
-					LOGGER.error("Couldn't undeploy all child verticles");
-					stopPromise.complete();
-				});
+		List<Future<Void>> undeploymentFutures = new LinkedList<Future<Void>>();
+		for(MessageConsumer consumer : consumers)
+		{
+			undeploymentFutures.add(consumer.unregister().mapEmpty());
+		}			
+		
+		Future.all(undeploymentFutures).mapEmpty().
+		onSuccess(v -> stopPromise.complete())
+		.onFailure(err -> {
+			LOGGER.error("Couldn't undeploy all child verticles");
+			stopPromise.complete();
+		});		
 	}
 
 	/**
@@ -155,28 +166,21 @@ public class SoileRouteBuilding extends AbstractVerticle {
 	 * @return
 	 */
 	@SuppressWarnings("rawtypes")
-	private Future<Void> deployVerticles() {
-		List<Future> deploymentFutures = new LinkedList<Future>();
-		vertx.deployVerticle(new ExperimentLanguageVerticle(SoileConfigLoader.getVerticleProperty("elangAddress")),
-				soileOpts);
-		vertx.deployVerticle(
-				new QuestionnaireRenderVerticle(SoileConfigLoader.getVerticleProperty("questionnaireAddress")),
-				soileOpts);
+	private Future<Void> deployVerticles()
+	{
+		List<Future<String>> deploymentFutures = new LinkedList<Future<String>>();
+		vertx.deployVerticle(new ExperimentLanguageVerticle(SoileConfigLoader.getVerticleProperty("elangAddress")), soileOpts);
+		vertx.deployVerticle(new QuestionnaireRenderVerticle(SoileConfigLoader.getVerticleProperty("questionnaireAddress")), soileOpts);
 		vertx.deployVerticle(new CodeRetrieverVerticle(), soileOpts);
 		vertx.deployVerticle(new ParticipantVerticle(partHandler, projHandler), soileOpts);
 		vertx.deployVerticle(new TaskInformationverticle(), soileOpts);
-		vertx.deployVerticle(new DataBundleGeneratorVerticle(client, projHandler, partHandler), soileOpts);
-		return CompositeFuture.all(deploymentFutures).mapEmpty();
+		vertx.deployVerticle(new DataBundleGeneratorVerticle(client,projHandler,partHandler), soileOpts);
+		return Future.all(deploymentFutures).mapEmpty();
 
 	}
 
-	/**
-	 * Set the Deployment options for the verticles required for routing.
-	 * 
-	 * @param opts the {@link DeploymentOptions}
-	 */
+	
 	public void setDeploymentOptions(DeploymentOptions opts) {
-		this.soileOpts = opts;
 	}
 
 	/**
@@ -185,9 +189,14 @@ public class SoileRouteBuilding extends AbstractVerticle {
 	 * @param unused an unused Void input for composition.
 	 * @return A Future of the {@link RouterBuilder} created
 	 */
-	private Future<RouterBuilder> createRouter(Void unused) {
+	private Future<RouterBuilderImpl> createRouter(Void unused)
+	{
 		LOGGER.debug(config().getString("api"));
-		return RouterBuilder.create(vertx, config().getString("api"));
+		Future<OpenAPIContract> contract = OpenAPIContract.from(vertx, config().getString("api"));		
+		return contract.compose(openapi -> Future.succeededFuture(
+				new RouterBuilderImpl(vertx,openapi, 
+						(routingContext, operation) -> RequestUtils.extract(routingContext.request(), operation))
+				));
 	}
 
 	/**
@@ -216,16 +225,18 @@ public class SoileRouteBuilding extends AbstractVerticle {
 	 * @param builder the Routerbuilder to be used.
 	 * @return the routerbuilder in a future for composite use
 	 */
-	Future<RouterBuilder> setupAuth(RouterBuilder builder) {
+	Future<RouterBuilder> setupAuth(RouterBuilderImpl builder)
+	{	
 		handler = new SoileAuthenticationBuilder();
-
-		AuthenticationHandler JWTAuth = JWTAuthHandler.create(handler.getJWTAuthProvider(vertx));
-		AuthenticationHandler tokenAuth = handler.getTokenAuthProvider(partHandler, client);
-		AuthenticationHandler cookieAuth = handler.getCookieAuthProvider(vertx, client, cookieHandler);
-
-		builder.securityHandler("cookieAuth", cookieAuth)
-				.securityHandler("JWTAuth", JWTAuth)
-				.securityHandler("tokenAuth", tokenAuth);
+		
+		JWTAuthHandler JWTAuth =  JWTAuthHandler.create(handler.getJWTAuthProvider(vertx));
+		AuthenticationHandler tokenAuth =  handler.getTokenAuthProvider(partHandler, client);
+		AuthenticationHandler cookieAuth =  handler.getCookieAuthProvider(vertx, client, cookieHandler);
+				
+		builder.security("cookieAuth", cookieAuth,null);			  
+		builder.security("JWTAuth",JWTAuth,null);			
+		builder.security("tokenAuth", tokenAuth, null);
+		
 		anyAuth = ChainAuthHandler.any().add(JWTAuth).add(cookieAuth).add(tokenAuth);
 		userAuth = ChainAuthHandler.any().add(JWTAuth).add(cookieAuth);
 		return Future.<RouterBuilder>succeededFuture(builder);
@@ -258,17 +269,14 @@ public class SoileRouteBuilding extends AbstractVerticle {
 		builder.rootHandler(new DebugRouter());
 		return Future.<RouterBuilder>succeededFuture(builder);
 	}
-
-	Future<RouterBuilder> setupLogin(RouterBuilder builder) {
-
-		SoileFormLoginHandler formLoginHandler = new SoileFormLoginHandler(new SoileAuthentication(client), "username",
-				"password", new JWTTokenCreator(handler, vertx), cookieHandler);
-		PasswordReset pwReset = new PasswordReset(client, new JWTTokenCreator(handler, vertx), vertx, cookieHandler);
-		builder.operation("loginUser").handler(formLoginHandler::handle);
-		builder.operation("oneTimeAuth").handler(pwReset::handle);
-		builder.operation("resetPassword").handler(pwReset::request_reset);
-		builder.operation("testAuth").handler(this::testAuth);
-		builder.operation("logout").handler(this::logout);
+	
+	Future<RouterBuilder> setupLogin(RouterBuilder builder)
+	{
+		
+		SoileFormLoginHandler formLoginHandler = new SoileFormLoginHandler(new SoileAuthentication(client), "username", "password",new JWTTokenCreator(handler,vertx), cookieHandler);		
+		builder.getRoute("loginUser").addHandler(formLoginHandler::handle);
+		builder.getRoute("testAuth").addHandler(this::testAuth);
+		builder.getRoute("logout").addHandler(this::logout);
 		return Future.<RouterBuilder>succeededFuture(builder);
 	}
 
@@ -317,23 +325,24 @@ public class SoileRouteBuilding extends AbstractVerticle {
 	 * @param builder
 	 * @return
 	 */
-	private Future<RouterBuilder> setupTaskAPI(RouterBuilder builder) {
-		taskRouter = new TaskRouter(client, fileProvider, vertx, soileAuthorization);
-		builder.operation("getTaskList").handler(taskRouter::getElementList);
-		builder.operation("getVersionsForTask").handler(taskRouter::getVersionList);
-		builder.operation("createTask").handler(taskRouter::create);
-		builder.operation("getTask").handler(taskRouter::getElement);
-		builder.operation("getTaskFileList").handler(taskRouter::getTaskFileList);
-		builder.operation("updateTask").handler(taskRouter::writeElement);
-		builder.operation("compileCode").handler(taskRouter::compileCode);
-		builder.operation("getExecution").handler(taskRouter::getCompiledTask);
-		builder.operation("getTagForTaskVersion").handler(taskRouter::getTagForVersion);
-		builder.operation("downloadTask").handler(taskRouter::downloadTask);
-		builder.operation("uploadTask").handler(taskRouter::uploadTask);
-		builder.operation("removeTagsForTask").handler(taskRouter::removeTagsFromElement);
-		builder.operation("addTagToTaskVersion").handler(taskRouter::addTagToVersion);
-		builder.operation("deleteTask").handler(taskRouter::deleteElement);
-		builder.operation("getCodeOptions").handler(taskRouter::getCodeOptions);
+	private Future<RouterBuilder> setupTaskAPI(RouterBuilder builder)
+	{
+		taskRouter = new TaskRouter( client, fileProvider, vertx, soileAuthorization);
+		builder.getRoute("getTaskList").addHandler(taskRouter::getElementList);
+		builder.getRoute("getVersionsForTask").addHandler(taskRouter::getVersionList);
+		builder.getRoute("createTask").addHandler(taskRouter::create);
+		builder.getRoute("getTask").addHandler(taskRouter::getElement);
+		builder.getRoute("getTaskFileList").addHandler(taskRouter::getTaskFileList);
+		builder.getRoute("updateTask").addHandler(taskRouter::writeElement);
+		builder.getRoute("compileCode").addHandler(taskRouter::compileCode);
+		builder.getRoute("getExecution").addHandler(taskRouter::getCompiledTask);
+		builder.getRoute("getTagForTaskVersion").addHandler(taskRouter::getTagForVersion);
+		builder.getRoute("downloadTask").addHandler(taskRouter::downloadTask);
+		builder.getRoute("uploadTask").addHandler(taskRouter::uploadTask);
+		builder.getRoute("removeTagsForTask").addHandler(taskRouter::removeTagsFromElement);
+		builder.getRoute("addTagToTaskVersion").addHandler(taskRouter::addTagToVersion);
+		builder.getRoute("deleteTask").addHandler(taskRouter::deleteElement);
+		builder.getRoute("getCodeOptions").addHandler(taskRouter::getCodeOptions);		
 		return Future.<RouterBuilder>succeededFuture(builder);
 	}
 
@@ -343,19 +352,18 @@ public class SoileRouteBuilding extends AbstractVerticle {
 	 * @param builder
 	 * @return
 	 */
-	private Future<RouterBuilder> setupExperimentAPI(RouterBuilder builder) {
-		ElementRouter<Experiment> router = new ElementRouter<Experiment>(
-				new ElementManager<Experiment>(Experiment::new, APIExperiment::new, client, vertx), soileAuthorization,
-				vertx.eventBus(), client);
-		builder.operation("getExperimentList").handler(router::getElementList);
-		builder.operation("getVersionsForExperiment").handler(router::getVersionList);
-		builder.operation("createExperiment").handler(router::create);
-		builder.operation("getExperiment").handler(router::getElement);
-		builder.operation("updateExperiment").handler(router::writeElement);
-		builder.operation("getTagForExperimentVersion").handler(router::getTagForVersion);
-		builder.operation("removeTagsForExperiment").handler(router::removeTagsFromElement);
-		builder.operation("deleteExperiment").handler(router::deleteElement);
-		builder.operation("addTagToExperimentVersion").handler(router::addTagToVersion);
+	private Future<RouterBuilder> setupExperimentAPI(RouterBuilder builder)
+	{
+		ElementRouter<Experiment> router = new ElementRouter<Experiment>(new ElementManager<Experiment>(Experiment::new, APIExperiment::new, client, vertx), soileAuthorization, vertx.eventBus(), client );
+		builder.getRoute("getExperimentList").addHandler(router::getElementList);
+		builder.getRoute("getVersionsForExperiment").addHandler(router::getVersionList);
+		builder.getRoute("createExperiment").addHandler(router::create);
+		builder.getRoute("getExperiment").addHandler(router::getElement);
+		builder.getRoute("updateExperiment").addHandler(router::writeElement);
+		builder.getRoute("getTagForExperimentVersion").addHandler(router::getTagForVersion);
+		builder.getRoute("removeTagsForExperiment").addHandler(router::removeTagsFromElement);
+		builder.getRoute("deleteExperiment").addHandler(router::deleteElement);
+		builder.getRoute("addTagToExperimentVersion").addHandler(router::addTagToVersion);
 		return Future.<RouterBuilder>succeededFuture(builder);
 	}
 
@@ -365,20 +373,19 @@ public class SoileRouteBuilding extends AbstractVerticle {
 	 * @param builder
 	 * @return
 	 */
-	private Future<RouterBuilder> setupProjectAPI(RouterBuilder builder) {
-		ProjectRouter router = new ProjectRouter(
-				new ElementManager<Project>(Project::new, APIProject::new, client, vertx), soileAuthorization,
-				vertx.eventBus(), client);
-		builder.operation("getProjectList").handler(router::getElementList);
-		builder.operation("getVersionsForProject").handler(router::getVersionList);
-		builder.operation("createProject").handler(router::create);
-		builder.operation("getProject").handler(router::getElement);
-		builder.operation("updateProject").handler(router::writeElement);
-		builder.operation("getTagForProjectVersion").handler(router::getTagForVersion);
-		builder.operation("isFilterValid").handler(router::isFilterValid);
-		builder.operation("removeTagsForProject").handler(router::removeTagsFromElement);
-		builder.operation("deleteProject").handler(router::removeTagsFromElement);
-		builder.operation("addTagToProjectVersion").handler(router::addTagToVersion);
+	private Future<RouterBuilder> setupProjectAPI(RouterBuilder builder)
+	{
+		ProjectRouter router = new ProjectRouter(new ElementManager<Project>(Project::new, APIProject::new, client, vertx), soileAuthorization, vertx.eventBus(), client );
+		builder.getRoute("getProjectList").addHandler(router::getElementList);
+		builder.getRoute("getVersionsForProject").addHandler(router::getVersionList);
+		builder.getRoute("createProject").addHandler(router::create);
+		builder.getRoute("getProject").addHandler(router::getElement);
+		builder.getRoute("updateProject").addHandler(router::writeElement);
+		builder.getRoute("getTagForProjectVersion").addHandler(router::getTagForVersion);
+		builder.getRoute("isFilterValid").addHandler(router::isFilterValid);
+		builder.getRoute("removeTagsForProject").addHandler(router::removeTagsFromElement);
+		builder.getRoute("deleteProject").addHandler(router::removeTagsFromElement);
+		builder.getRoute("addTagToProjectVersion").addHandler(router::addTagToVersion);
 		return Future.<RouterBuilder>succeededFuture(builder);
 	}
 
@@ -391,22 +398,22 @@ public class SoileRouteBuilding extends AbstractVerticle {
 	 */
 	private Future<RouterBuilder> setupStudyAPI(RouterBuilder builder) {
 		StudyRouter router = new StudyRouter(soileAuthorization, vertx, client, partHandler, projHandler);
-		builder.operation("listDownloadData").handler(router::listDownloadData);
-		builder.operation("startStudy").handler(router::startProject);
-		builder.operation("getRunningStudies").handler(router::getRunningProjectList);
-		builder.operation("stopStudy").handler(router::stopProject);
-		builder.operation("restartStudy").handler(router::startStudy);
-		builder.operation("deleteStudy").handler(router::deleteProject);
-		builder.operation("getStudyResults").handler(router::getProjectResults);
-		builder.operation("downloadResults").handler(router::downloadResults);
-		builder.operation("downloadTest").handler(router::downloadTest);
-		builder.operation("createTokens").handler(router::createTokens);
-		builder.operation("resetStudy").handler(router::resetStudy);
-		builder.operation("updateStudy").handler(router::updateStudy);
-		builder.operation("getStudyProperties").handler(router::getStudyProperties);
-		builder.operation("getTokenInformation").handler(router::getTokenInformation);
-		builder.operation("getCollaboratorsForStudy").handler(router::getCollaboratorsForStudy);
-		builder.operation("getStudyList").handler(router::getStudyList);
+		builder.getRoute("listDownloadData").addHandler(router::listDownloadData);
+		builder.getRoute("startStudy").addHandler(router::startProject);
+		builder.getRoute("getRunningStudies").addHandler(router::getRunningProjectList);
+		builder.getRoute("stopStudy").addHandler(router::stopProject);		
+		builder.getRoute("restartStudy").addHandler(router::startStudy);
+		builder.getRoute("deleteStudy").addHandler(router::deleteProject);
+		builder.getRoute("getStudyResults").addHandler(router::getProjectResults);		
+		builder.getRoute("downloadResults").addHandler(router::downloadResults);
+		builder.getRoute("downloadTest").addHandler(router::downloadTest);
+		builder.getRoute("createTokens").addHandler(router::createTokens);
+		builder.getRoute("resetStudy").addHandler(router::resetStudy);
+		builder.getRoute("updateStudy").addHandler(router::updateStudy);
+		builder.getRoute("getStudyProperties").addHandler(router::getStudyProperties);
+		builder.getRoute("getTokenInformation").addHandler(router::getTokenInformation);
+		builder.getRoute("getCollaboratorsForStudy").addHandler(router::getCollaboratorsForStudy);		
+		builder.getRoute("getStudyList").addHandler(router::getStudyList);		
 		return Future.<RouterBuilder>succeededFuture(builder);
 	}
 
@@ -418,30 +425,14 @@ public class SoileRouteBuilding extends AbstractVerticle {
 	 */
 	private Future<RouterBuilder> setupParticipationAPI(RouterBuilder builder) {
 		partRouter = new ParticipationRouter(soileAuthorization, vertx, client, partHandler, projHandler, fileProvider);
-		builder.operation("submitResults").handler(context -> {
-			partRouter.handleRequest(context, partRouter::submitResults);
-		});
-		builder.operation("getTaskInfo").handler(context -> {
-			partRouter.handleRequest(context, partRouter::getTaskInfo);
-		});
-		builder.operation("runTask").handler(context -> {
-			partRouter.handleRequest(context, partRouter::runTask);
-		});
-		builder.operation("getID").handler(context -> {
-			partRouter.handleRequest(context, partRouter::getID);
-		});
-		builder.operation("signUpForProject").handler(context -> {
-			partRouter.handleRequest(context, partRouter::signUpForProject);
-		});
-		builder.operation("withdrawFromStudy").handler(context -> {
-			partRouter.handleRequest(context, partRouter::withdrawFromStudy);
-		});
-		builder.operation("uploadData").handler(context -> {
-			partRouter.handleRequest(context, partRouter::uploadData);
-		});
-		builder.operation("getPersistentData").handler(context -> {
-			partRouter.handleRequest(context, partRouter::getPersistentData);
-		});
+		builder.getRoute("submitResults").addHandler(context -> {partRouter.handleRequest(context,partRouter::submitResults);});
+		builder.getRoute("getTaskInfo").addHandler(context -> {partRouter.handleRequest(context,partRouter::getTaskInfo);});
+		builder.getRoute("runTask").addHandler(context -> {partRouter.handleRequest(context,partRouter::runTask);});
+		builder.getRoute("getID").addHandler(context -> {partRouter.handleRequest(context,partRouter::getID);});
+		builder.getRoute("signUpForProject").addHandler(context -> {partRouter.handleRequest(context,partRouter::signUpForProject);});
+		builder.getRoute("withdrawFromStudy").addHandler(context -> {partRouter.handleRequest(context,partRouter::withdrawFromStudy);});
+		builder.getRoute("uploadData").addHandler(context -> {partRouter.handleRequest(context,partRouter::uploadData);});
+		builder.getRoute("getPersistentData").addHandler(context -> {partRouter.handleRequest(context,partRouter::getPersistentData);});		
 		return Future.<RouterBuilder>succeededFuture(builder);
 	}
 
@@ -453,17 +444,17 @@ public class SoileRouteBuilding extends AbstractVerticle {
 	 */
 	private Future<RouterBuilder> setupUserAPI(RouterBuilder builder) {
 		UserRouter router = new UserRouter(soileAuthorization, vertx, client);
-		builder.operation("registerUser").handler(router::registerUser);
-		builder.operation("listUsers").handler(router::listUsers);
-		builder.operation("createUser").handler(router::createUser);
-		builder.operation("removeUser").handler(router::removeUser);
-		builder.operation("getUserInfo").handler(router::getUserInfo);
-		builder.operation("setUserInfo").handler(router::setUserInfo);
-		builder.operation("setPassword").handler(router::setPassword);
-		builder.operation("setRole").handler(router::setRole);
-		builder.operation("permissionChange").handler(router::permissionChange);
-		builder.operation("permissionOrRoleRequest").handler(router::permissionOrRoleRequest);
-		builder.operation("getUserActiveProjects").handler(router::getUserActiveProjects);
+		builder.getRoute("registerUser").addHandler(router::registerUser);
+		builder.getRoute("listUsers").addHandler(router::listUsers);
+		builder.getRoute("createUser").addHandler(router::createUser);
+		builder.getRoute("removeUser").addHandler(router::removeUser);
+		builder.getRoute("getUserInfo").addHandler(router::getUserInfo);
+		builder.getRoute("setUserInfo").addHandler(router::setUserInfo);
+		builder.getRoute("setPassword").addHandler(router::setPassword);
+		builder.getRoute("setRole").addHandler(router::setRole);
+		builder.getRoute("permissionChange").addHandler(router::permissionChange);
+		builder.getRoute("permissionOrRoleRequest").addHandler(router::permissionOrRoleRequest);
+		builder.getRoute("getUserActiveProjects").addHandler(router::getUserActiveProjects);
 		return Future.<RouterBuilder>succeededFuture(builder);
 	}
 

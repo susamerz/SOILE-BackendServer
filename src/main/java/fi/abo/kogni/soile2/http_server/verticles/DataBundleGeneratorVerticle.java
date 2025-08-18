@@ -71,11 +71,11 @@ public class DataBundleGeneratorVerticle extends AbstractVerticle{
 	@SuppressWarnings("rawtypes")
 	public void stop(Promise<Void> stopPromise)
 	{
-		List<Future> consumerdeactivateFutures = new LinkedList<>();
+		List<Future<Void>> consumerdeactivateFutures = new LinkedList<>();
 		consumerdeactivateFutures.add(vertx.eventBus().consumer("fi.abo.soile.DLStatus", this::getStatus).unregister());
 		consumerdeactivateFutures.add(vertx.eventBus().consumer("fi.abo.soile.DLFiles", this::getDownloadFiles).unregister());
 		consumerdeactivateFutures.add(vertx.eventBus().consumer("fi.abo.soile.DLCreate", this::createDownload).unregister());
-		CompositeFuture.all(consumerdeactivateFutures)
+		Future.all(consumerdeactivateFutures)
 		.onSuccess(success -> {
 			LOGGER.debug("Successfully undeployed DataBundleGenerator with id : " + deploymentID());
 			stopPromise.complete();
@@ -292,7 +292,7 @@ public class DataBundleGeneratorVerticle extends AbstractVerticle{
 				LOGGER.debug("The participants of this study are: " + participants.encodePrettily());
 				// Collect the data  
 				@SuppressWarnings("rawtypes")
-				List<Future> partDataFutures = new LinkedList<>();				
+				List<Future<Void>> partDataFutures = new LinkedList<>();				
 				ConcurrentHashMap<String,List<JsonObject>> taskResults = new ConcurrentHashMap<>();
 				for(int i = 0; i < tasks.size(); ++i)
 				{
@@ -304,12 +304,12 @@ public class DataBundleGeneratorVerticle extends AbstractVerticle{
 								taskResults.put(currentTask,res);
 								addedPromise.complete();
 							})
-							.onFailure(err -> addedPromise.fail(err))
+							.onFailure(err -> addedPromise.fail(err)).mapEmpty()
 							);
 
 				}
 				
-				CompositeFuture.all(partDataFutures)				
+				Future.all(partDataFutures)				
 				.onSuccess(participantsData -> {
 					// at this point the List is filled with all relevant JsonObjects.
 					// This is a particpant with _id, resultData
@@ -781,13 +781,13 @@ public class DataBundleGeneratorVerticle extends AbstractVerticle{
 	{
 		Promise<List<Boolean>> errorPromise = Promise.promise();
 		@SuppressWarnings("rawtypes")
-		List<Future> filesExistFutures = new LinkedList<Future>();
+		List<Future<Void>> filesExistFutures = new LinkedList<Future<Void>>();
 
 		for(JsonObject file : filesIndicators)
 		{
 			filesExistFutures.add(checkFileExist(file));									
 		}
-		CompositeFuture filesExist =  CompositeFuture.join(filesExistFutures);	
+		CompositeFuture filesExist =  Future.join(filesExistFutures);	
 		// There are failing and succeeding futures in this.
 		filesExist.onComplete(finishedCheck -> {
 			List<Boolean> fileExistIndicator = new LinkedList<>();

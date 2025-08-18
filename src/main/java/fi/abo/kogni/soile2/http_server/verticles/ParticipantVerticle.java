@@ -51,12 +51,12 @@ public class ParticipantVerticle extends AbstractVerticle {
 	@Override
 	public void stop(Promise<Void> stopPromise)
 	{
-		List<Future> undeploymentFutures = new LinkedList<Future>();
+		List<Future<Void>> undeploymentFutures = new LinkedList<Future<Void>>();
 		for(MessageConsumer consumer : consumers)
 		{
 			undeploymentFutures.add(consumer.unregister());
 		}				
-		CompositeFuture.all(undeploymentFutures).mapEmpty().
+		Future.all(undeploymentFutures).mapEmpty().
 		onSuccess(v -> {
 			LOGGER.debug("Successfully undeployed DataBundleGenerator with id : " + deploymentID());
 			stopPromise.complete();
@@ -70,12 +70,12 @@ public class ParticipantVerticle extends AbstractVerticle {
 	public void deleteParticipants(Message<JsonArray> message)
 	{
 		JsonArray participantInformation = message.body();
-		List<Future> deletionFutures = new LinkedList<>();
+		List<Future<Void>> deletionFutures = new LinkedList<>();
 		for(int i = 0; i< participantInformation.size(); ++i)
 		{
 			deletionFutures.add(partHandler.deleteParticipant(participantInformation.getJsonObject(i).getString("participantID"), true));			
 		}
-		CompositeFuture.all(deletionFutures)
+		Future.all(deletionFutures)
 		.onSuccess(succeeded -> 
 		{
 			message.reply(SoileCommUtils.successObject());

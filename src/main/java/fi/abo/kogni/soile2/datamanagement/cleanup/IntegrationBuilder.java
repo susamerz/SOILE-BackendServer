@@ -6,7 +6,7 @@ import java.util.LinkedList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.mongodb.internal.connection.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 import fi.abo.kogni.soile2.projecthandling.projectElements.impl.ElementManager;
 import fi.abo.kogni.soile2.projecthandling.projectElements.impl.Experiment;
@@ -54,17 +54,17 @@ public class IntegrationBuilder {
 		Promise<Void> donePromise = Promise.promise();
 		Promise<Void> experimentsPromise = Promise.promise();
 		Promise<Void> projectsPromise = Promise.promise();
-		LinkedList<Future> allDone = new LinkedList<>();
+		LinkedList<Future<Void>> allDone = new LinkedList<>();
 		allDone.add(experimentsPromise.future());
 		allDone.add(projectsPromise.future());
 		experimentManager.getElementList(true)		
 		.onSuccess(expList -> {
-			LinkedList<Future> expDone = new LinkedList<>();
+			LinkedList<Future<Void>> expDone = new LinkedList<>();
 			for(int i = 0 ; i < expList.size(); i++)
 			{				
 				expDone.add(handleExperiment(expList.getJsonObject(i).getString("UUID")));
 			}
-			CompositeFuture.all(expDone)
+			Future.all(expDone)
 			.onSuccess(done -> {
 				experimentsPromise.complete();
 			})
@@ -74,19 +74,19 @@ public class IntegrationBuilder {
 		
 		projectManager.getElementList(true)
 		.onSuccess(projList -> {
-			LinkedList<Future> projDone = new LinkedList<>();
+			LinkedList<Future<Void>> projDone = new LinkedList<>();
 			for(int i = 0 ; i < projList.size(); i++)
 			{
 				projDone.add(handleProject(projList.getJsonObject(i).getString("UUID")));
 			}
-			CompositeFuture.all(projDone)
+			Future.all(projDone)
 			.onSuccess(done -> {
 				projectsPromise.complete();
 			})
 			.onFailure(err -> projectsPromise.fail(err));
 		
 		});
-		CompositeFuture.all(allDone)
+		Future.all(allDone)
 		.onSuccess(allFinished -> {
 			donePromise.complete();
 		})
@@ -101,7 +101,7 @@ public class IntegrationBuilder {
 		Promise<Void> elementDone = Promise.promise();											
 		experimentManager.getVersionListForElement(UUID)
 		.onSuccess(versionList -> {
-			LinkedList<Future> versionsDone = new LinkedList<>();
+			LinkedList<Future<Void>> versionsDone = new LinkedList<>();
 			// we only need to care about taggable versions
 			ConcurrentLinkedDeque<String> experimentIDs = new ConcurrentLinkedDeque<>();
 			ConcurrentLinkedDeque<String> taskIDs = new ConcurrentLinkedDeque<>();			
@@ -126,14 +126,15 @@ public class IntegrationBuilder {
 									}
 								}
 								return Future.succeededFuture();
-							}).mapEmpty()
-							.onFailure(err -> {
+							}).onFailure(err -> {
 								LOGGER.error("Failed building for " + UUID + " @ " + currentVersion.getString("version"));
 								LOGGER.error(err,err);
-							}));										
+							})
+							.mapEmpty()
+							);										
 				}
 			}
-			CompositeFuture.all(versionsDone)
+			Future.all(versionsDone)
 			.compose(finished -> {
 				return experimentManager.getElement(UUID);
 			})
@@ -163,7 +164,7 @@ public class IntegrationBuilder {
 		Promise<Void> elementDone = Promise.promise();											
 		projectManager.getVersionListForElement(UUID)
 		.onSuccess(versionList -> {
-			LinkedList<Future> versionsDone = new LinkedList<>();
+			LinkedList<Future<Void>> versionsDone = new LinkedList<>();
 			// we only need to care about taggable versions
 			ConcurrentLinkedDeque<String> experimentIDs = new ConcurrentLinkedDeque<>();
 			ConcurrentLinkedDeque<String> taskIDs = new ConcurrentLinkedDeque<>();			
@@ -195,7 +196,7 @@ public class IntegrationBuilder {
 							}).mapEmpty());								
 				}
 			}
-			CompositeFuture.all(versionsDone)
+			Future.all(versionsDone)
 			.compose(finished -> {
 				return projectManager.getElement(UUID);
 			})

@@ -89,10 +89,10 @@ public class TaskBundler {
 		.onSuccess(resourceList -> {			
 			JsonArray resourceArray = (JsonArray)resourceList.body();
 			// this has the structure: [ { label : file/foldername , children: [ {} ] <optional> }];
-			List<Future> fileRetrievalFutures = new LinkedList<>();
+			List<Future<Void>> fileRetrievalFutures = new LinkedList<>();
 			ConcurrentLinkedDeque<FileDescriptor> resources = new ConcurrentLinkedDeque<FileDescriptor>();
 			buildResourceList(resourceArray, fileRetrievalFutures, resources, Path.of(""), taskUUID, version);
-			CompositeFuture.all(fileRetrievalFutures)
+			Future.all(fileRetrievalFutures)
 			.onSuccess(allFilesRetrieved -> {
 				// now we got all The resource files now. 
 				listPromise.complete(List.copyOf(resources));
@@ -104,7 +104,7 @@ public class TaskBundler {
 		return listPromise.future();
 	}
 	
-	private void buildResourceList(JsonArray fileList, List<Future> fileRetrievalFutures, ConcurrentLinkedDeque<FileDescriptor> files, Path currentPath, String taskUUID, String version)
+	private void buildResourceList(JsonArray fileList, List<Future<Void>> fileRetrievalFutures, ConcurrentLinkedDeque<FileDescriptor> files, Path currentPath, String taskUUID, String version)
 	{
 		for(int i = 0; i < fileList.size(); ++i)
 		{
@@ -115,7 +115,7 @@ public class TaskBundler {
 			}
 			else
 			{
-				Promise fileRetrivalPromise = Promise.promise();
+				Promise<Void> fileRetrivalPromise = Promise.promise();
 				fileRetrievalFutures.add(fileRetrivalPromise.future());
 				GitFile target = new GitFile(currentPath.resolve(currentFile.getString("label")).toString(), taskManager.getGitIDForUUID(taskUUID), version); 
 				dlrmgr.getElement(target)
@@ -279,7 +279,7 @@ public class TaskBundler {
 					Promise<String> currentVersionPromise = Promise.promise();
 					Future<String> currentVersionFuture = currentVersionPromise.future();
 					Enumeration<? extends ZipEntry> entries = zipFile.entries();
-					List<Future> FilesExtractedList = new LinkedList<>();						
+					List<Future<String>> FilesExtractedList = new LinkedList<>();						
 					LinkedList<Future<String>> versionsList = new LinkedList<>();
 					versionsList.add(currentVersionFuture);
 					while(entries.hasMoreElements()){
@@ -298,7 +298,7 @@ public class TaskBundler {
 						// now, we want to skip "resources folder"
 					}
 					currentVersionPromise.complete(createdTask.getCurrentVersion());
-					CompositeFuture.all(FilesExtractedList)
+					Future.all(FilesExtractedList)
 					.onSuccess(success -> {
 						versionsList.getLast().onSuccess(latestVersion -> {
 							taskManager.getAPIElementFromDB(createdTask.getUUID(), latestVersion)

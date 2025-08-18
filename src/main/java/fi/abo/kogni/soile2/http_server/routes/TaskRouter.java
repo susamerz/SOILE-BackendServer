@@ -138,7 +138,7 @@ public class TaskRouter extends ElementRouter<Task> {
 				} else {
 					context.response().putHeader(HttpHeaders.CONTENT_TYPE, contentType);
 				}
-				context.response().sendFile(file.getPath(), res2 -> {
+				context.response().sendFile(file.getPath()).andThen(res2 -> {
 					if (res2.failed()) {
 						if (!context.request().isEnded()) {
 							context.request().resume();
@@ -308,7 +308,7 @@ public class TaskRouter extends ElementRouter<Task> {
 					.setChunked(true);						
 					pump.pipeTo(context.response()).onSuccess(success -> {
 					}).onFailure(err -> {
-						context.response().close();
+						context.response().end();
 					});											
 				}
 				catch(IOException e)

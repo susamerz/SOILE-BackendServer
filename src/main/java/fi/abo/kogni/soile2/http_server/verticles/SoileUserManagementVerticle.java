@@ -112,12 +112,12 @@ public class SoileUserManagementVerticle extends SoileBaseVerticle {
 	@Override
 	public void stop(Promise<Void> stopPromise)
 	{
-		List<Future> undeploymentFutures = new LinkedList<Future>();
+		List<Future<Void>> undeploymentFutures = new LinkedList<Future<Void>>();
 		for(MessageConsumer consumer : consumers)
 		{
 			undeploymentFutures.add(consumer.unregister());
 		}				
-		CompositeFuture.all(undeploymentFutures).mapEmpty().
+		Future.all(undeploymentFutures).mapEmpty().
 		onSuccess(v -> {
 			LOGGER.debug("Successfully undeployed SoileUserManager with id : " + deploymentID());			
 			stopPromise.complete();

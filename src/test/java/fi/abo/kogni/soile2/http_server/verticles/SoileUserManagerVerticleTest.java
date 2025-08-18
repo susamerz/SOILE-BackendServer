@@ -16,7 +16,7 @@ import fi.abo.kogni.soile2.utils.SoileConfigLoader;
 import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.HashingStrategy;
+import io.vertx.ext.auth.hashing.HashingStrategy;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 

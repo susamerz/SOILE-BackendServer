@@ -56,9 +56,9 @@ public class TaskInformationverticle extends AbstractVerticle{
 	public void stop(Promise<Void> stopPromise)
 	{
 		@SuppressWarnings("rawtypes")
-		List<Future> undeploymentFutures = new LinkedList<Future>();
+		List<Future<Void>> undeploymentFutures = new LinkedList<Future<Void>>();
 		undeploymentFutures.add(vertx.eventBus().consumer(SoileConfigLoader.getVerticleProperty("getTaskInformationAddress"), this::getTaskInfo).unregister());		
-		CompositeFuture.all(undeploymentFutures).mapEmpty().
+		Future.all(undeploymentFutures).mapEmpty().
 		onSuccess(v -> {
 			LOGGER.debug("Successfully undeployed TaskInformationVerticle with id: " + deploymentID());
 			stopPromise.complete();

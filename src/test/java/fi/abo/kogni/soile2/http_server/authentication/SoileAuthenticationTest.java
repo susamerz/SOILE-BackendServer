@@ -9,6 +9,8 @@ import fi.abo.kogni.soile2.http_server.auth.SoileAuthentication;
 import fi.abo.kogni.soile2.http_server.userManagement.SoileUserManager;
 import fi.abo.kogni.soile2.utils.SoileConfigLoader;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.auth.authentication.Credentials;
+import io.vertx.ext.auth.authentication.UsernamePasswordCredentials;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -47,7 +49,7 @@ public class SoileAuthenticationTest extends MongoTest implements UserManagement
 			final Async async = context.async();
 			// test auth
 			
-			auth.authenticate(participant1).onComplete( user -> {
+			auth.authenticate(new UsernamePasswordCredentials(participant1)).onComplete( user -> {
 				if(user.succeeded())
 				{
 					context.assertEquals(participant1.getString("username"),
@@ -85,7 +87,7 @@ public class SoileAuthenticationTest extends MongoTest implements UserManagement
 
 			SoileAuthentication auth = new SoileAuthentication(mongo_client);				
 			final Async invalidAuth = context.async();
-			auth.authenticate(invalidUser).onComplete( user -> {
+			auth.authenticate(new UsernamePasswordCredentials(invalidUser)).onComplete( user -> {
 				if(user.succeeded())
 				{				
 					context.fail("Invalid authentication succeeded");

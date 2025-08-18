@@ -285,12 +285,12 @@ public class StudyRouter extends SoileRouter {
 			studyHandler.deleteStudy(requestedInstanceID)
 			.onSuccess(deletedObject -> {
 				@SuppressWarnings("rawtypes")
-				List<Future> deletionFutures = new LinkedList<Future>();
+				List<Future<Void>> deletionFutures = new LinkedList<Future<Void>>();
 				for(int i = 0; i < deletedObject.getJsonArray("participants").size(); ++i)
 				{
 					deletionFutures.add(partHandler.deleteParticipant(deletedObject.getJsonArray("participants").getString(i), false));
 				}
-				CompositeFuture.all(deletionFutures)
+				Future.all(deletionFutures)
 				.onSuccess(done -> {					
 					context.response()
 					.setStatusCode(200)						
@@ -326,12 +326,12 @@ public class StudyRouter extends SoileRouter {
 				study.reset()
 				.onSuccess(participantsToDelete -> {
 					@SuppressWarnings("rawtypes")
-					List<Future> deletionFutures = new LinkedList<Future>();
+					List<Future<Void>> deletionFutures = new LinkedList<Future<Void>>();
 					for(int i = 0; i < participantsToDelete.size(); ++i)
 					{
 						deletionFutures.add(partHandler.deleteParticipant(participantsToDelete.getString(i), false));
 					}
-					CompositeFuture.all(deletionFutures)
+					Future.all(deletionFutures)
 					.onSuccess(done -> {
 							context.response()
 							.setStatusCode(200)						
@@ -563,7 +563,7 @@ public class StudyRouter extends SoileRouter {
 						}).onFailure(err -> {
 							LOGGER.error("Download " + dlID + " failed");
 							LOGGER.error(err);
-							context.response().close();
+							context.response().end();
 						});											
 					}
 					catch(IOException e)

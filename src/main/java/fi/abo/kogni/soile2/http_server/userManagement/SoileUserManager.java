@@ -11,7 +11,6 @@ import java.util.regex.Pattern;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.mchange.util.DuplicateElementException;
 
 import fi.abo.kogni.soile2.http_server.auth.SoileAuthorization.PermissionType;
 import fi.abo.kogni.soile2.http_server.auth.SoileAuthorization.Roles;
@@ -31,7 +30,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.HashingStrategy;
+import io.vertx.ext.auth.hashing.HashingStrategy;
 import io.vertx.ext.auth.mongo.MongoAuthenticationOptions;
 import io.vertx.ext.auth.mongo.MongoAuthorizationOptions;
 import io.vertx.ext.auth.mongo.MongoUserUtil;
@@ -615,7 +614,8 @@ public class SoileUserManager implements MongoUserUtil{
 		client.find(
 				authnOptions.getCollectionName(),
 				new JsonObject()
-				.put(authnOptions.getUsernameField(), username),
+				.put(authnOptions.getUsernameField(), username)
+				).andThen(
 				res -> {
 					if(res.succeeded())
 					{
@@ -631,7 +631,7 @@ public class SoileUserManager implements MongoUserUtil{
 									getDefaultFields()
 									.put(authnOptions.getUsernameField(), username)
 									.put(authnOptions.getPasswordField(), hash)									
-									,									
+									).andThen(									
 									resultHandler
 									);							
 						}
@@ -670,7 +670,8 @@ public class SoileUserManager implements MongoUserUtil{
 				.put(authnOptions.getUsernameField(), username); 
 		client.find(
 				authnOptions.getCollectionName(),
-				query,
+				query)
+				.andThen(
 				res -> {
 					if(res.succeeded())
 					{
@@ -706,8 +707,8 @@ public class SoileUserManager implements MongoUserUtil{
 									new JsonObject()
 									.put("$set", new JsonObject()
 											.put(authnOptions.getUsernameField(), username)
-											.put(SoileConfigLoader.getUserdbField("storedSessions"), validSessions)),
-									handler);							
+											.put(SoileConfigLoader.getUserdbField("storedSessions"), validSessions))
+									).andThen(handler);							
 							return;
 						}
 						else {		
@@ -759,8 +760,8 @@ public class SoileUserManager implements MongoUserUtil{
 				.put(authnOptions.getUsernameField(), username); 
 		client.find(
 				authnOptions.getCollectionName(),
-				query,
-				res -> {
+				query)
+				.andThen( res -> {
 					if(res.succeeded())
 					{
 						if(res.result().size() == 1)
@@ -795,8 +796,8 @@ public class SoileUserManager implements MongoUserUtil{
 									new JsonObject()
 									.put("$set", new JsonObject()
 											.put(authnOptions.getUsernameField(), username)
-											.put(SoileConfigLoader.getUserdbField("storedSessions"), validSessions)),
-									handler);							
+											.put(SoileConfigLoader.getUserdbField("storedSessions"), validSessions))
+									).andThen(handler);							
 							return;
 						}
 						else {		
@@ -846,7 +847,7 @@ public class SoileUserManager implements MongoUserUtil{
 				.put(authnOptions.getUsernameField(), username); 
 		client.find(
 				authnOptions.getCollectionName(),
-				query,
+				query).andThen(
 				res -> {
 					if(res.succeeded())
 					{
@@ -898,21 +899,27 @@ public class SoileUserManager implements MongoUserUtil{
 	@Override
 	public Future<String> createUser(String username, String password) {
 		Promise<String> promise = Promise.promise();
-		createUser(username, password, promise);
+		createUser(username, password)
+		.onFailure(fail -> promise.fail(fail))
+		.onSuccess(res -> promise.complete(res));
 		return promise.future();
 	}
 
 	@Override
 	public Future<String> createHashedUser(String username, String hash) {
 		Promise<String> promise = Promise.promise();
-		createHashedUser(username, hash, promise);
+		createHashedUser(username, hash)
+		.onFailure(fail -> promise.fail(fail))
+		.onSuccess(res -> promise.complete(res));
 		return promise.future();
 	}
 
 	@Override
 	public Future<String> createUserRolesAndPermissions(String user, List<String> roles, List<String> permissions) {
 		Promise<String> promise = Promise.promise();
-		createUserRolesAndPermissions(user, roles,permissions, promise);
+		createUserRolesAndPermissions(user, roles,permissions)
+		.onFailure(fail -> promise.fail(fail))
+		.onSuccess(res -> promise.complete(res));
 		return promise.future();
 	}
 
@@ -1057,7 +1064,7 @@ public class SoileUserManager implements MongoUserUtil{
 			if(found.size() > 1)
 			{
 				LOGGER.error("Found more than one user with this participant");
-				return Future.failedFuture(new DuplicateElementException("Duplicate Participant in users"));
+				return Future.failedFuture(new DuplicateUserEntryInDBException("Duplicate Participant in users"));
 			}
 			if(found.size() == 0) 				
 			{
@@ -1065,8 +1072,8 @@ public class SoileUserManager implements MongoUserUtil{
 				LOGGER.warn("User not found");
 				return Future.succeededFuture();
 			}
-			return client.updateCollection(authnOptions.getCollectionName(), query, pullObject);
-		}).mapEmpty();
+			return client.updateCollection(authnOptions.getCollectionName(), query, pullObject).mapEmpty();
+		});
 	}
 	
 	/**

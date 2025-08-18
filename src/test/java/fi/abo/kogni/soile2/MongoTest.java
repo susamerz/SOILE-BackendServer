@@ -66,12 +66,12 @@ public abstract class MongoTest extends SoileBaseTest {
 	public void finishUp(TestContext context)
 	{		
 		final Async oasync = context.async();
-		mongo_client.getCollections(cols ->{
+		mongo_client.getCollections().andThen(cols ->{
 			if(cols.succeeded())
 			{
 				Async shutDownVertxAsync = context.async();				
 				HashMap<String, Async> asyncMap = new HashMap<>();
-				List<Future> collectionsDropped = new LinkedList<Future>();
+				List<Future<Void>> collectionsDropped = new LinkedList<Future<Void>>();
 				for(String col : cols.result())
 				{
 					final Async async = context.async();
@@ -94,7 +94,7 @@ public abstract class MongoTest extends SoileBaseTest {
 				}
 				else
 				{
-					CompositeFuture.all(collectionsDropped)
+					Future.all(collectionsDropped)
 					.onSuccess(dropped -> {
 						// or there were collections to be dropped, then we have to wait till those are dropped before shutting down vertx. 
 						super.finishUp(context);

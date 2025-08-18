@@ -32,7 +32,7 @@ public class SoileLoginTest extends SoileVerticleTest {
 					.put("remember","1");
 			WebClientSession session = WebClientSession.create(webclient, new DebugCookieStore());			
 			vertx.eventBus().request("soile.umanager.addUser", 
-					userObject,res -> {
+					userObject).andThen(res -> {
 						if(res.succeeded())
 						{
 							//Now lets see if we can authenticate this.
@@ -95,7 +95,7 @@ public class SoileLoginTest extends SoileVerticleTest {
 					.put("remember","1");
 			WebClientSession session = WebClientSession.create(webclient, new DebugCookieStore());			
 			vertx.eventBus().request("soile.umanager.addUser", 
-					userObject,res -> {
+					userObject).andThen(res -> {
 						if(res.succeeded())
 						{
 							//Now lets see if we can authenticate this.
@@ -205,7 +205,7 @@ public class SoileLoginTest extends SoileVerticleTest {
 					.put("remember","1");
 			WebClientSession session = WebClientSession.create(webclient, new DebugCookieStore());			
 			vertx.eventBus().request("soile.umanager.addUser", 
-					userObject,res -> {
+					userObject).andThen(res -> {
 						if(res.succeeded())
 						{
 							//Now lets see if we can authenticate this.
@@ -270,7 +270,7 @@ public class SoileLoginTest extends SoileVerticleTest {
 					.put("fullname","Test User")
 					.put("remember","1");					
 			vertx.eventBus().request("soile.umanager.addUser", 
-					userObject,res -> {
+					userObject).andThen(res -> {
 						if(res.succeeded())
 						{
 							//Now lets see if we can authenticate this.

@@ -39,11 +39,11 @@ public class ParticipantHandlerTest extends GitTest{
 			.onSuccess(projectInstance -> {
 				projectInstance.activate()
 				.onSuccess(active -> {
-					LinkedList<Future> participantFutures = new LinkedList<Future>();
-					participantFutures.add(partHandler.create(projectInstance.getID()));
-					participantFutures.add(partHandler.create(projectInstance.getID()));
-					participantFutures.add(partHandler.create(projectInstance.getID()));
-					CompositeFuture.all(participantFutures).mapEmpty()
+					LinkedList<Future<Void>> participantFutures = new LinkedList<Future<Void>>();
+					participantFutures.add(partHandler.create(projectInstance.getID()).mapEmpty());
+					participantFutures.add(partHandler.create(projectInstance.getID()).mapEmpty());
+					participantFutures.add(partHandler.create(projectInstance.getID()).mapEmpty());
+					Future.all(participantFutures).mapEmpty()
 					.onSuccess(res -> {
 						partHandler.getParticipantStatusForProject(projectInstance)
 						.onSuccess(participantInfo -> 

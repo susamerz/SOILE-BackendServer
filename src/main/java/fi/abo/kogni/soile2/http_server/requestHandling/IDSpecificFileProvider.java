@@ -113,7 +113,7 @@ public class IDSpecificFileProvider {
 		} else {
 			response.putHeader(HttpHeaders.CONTENT_TYPE, contentType);
 		}
-		response.sendFile(file.getPath(), res2 -> {
+		response.sendFile(file.getPath()).andThen(res2 -> {
 			if (res2.failed()) {
 				if (!context.request().isEnded()) {
 					context.request().resume();

@@ -77,14 +77,14 @@ public class SoileServerVerticle extends AbstractVerticle {
 		LOGGER.debug("Stopping Server Verticle");
 		
 		@SuppressWarnings("rawtypes")
-		List<Future> unDeploymentFutures = new LinkedList<Future>();		
+		List<Future<Void>> unDeploymentFutures = new LinkedList<Future<Void>>();		
 		for(String deploymentID : deployedVerticles)
 		{
 			LOGGER.debug("Trying to undeploy : " + deploymentID);
 			unDeploymentFutures.add(undeploy(deploymentID));
 		}
 		//deploymentFutures.add(Future.<String>future(promise -> vertx.deployVerticle("js:templateManager.js", opts, promise)));
-		CompositeFuture.all(unDeploymentFutures).mapEmpty()
+		Future.all(unDeploymentFutures).mapEmpty()
 		.onSuccess(v -> {			
 			stopPromise.complete();			
 		})
@@ -134,13 +134,13 @@ public class SoileServerVerticle extends AbstractVerticle {
 		DeploymentOptions opts = new DeploymentOptions().setConfig(soileConfig);
 		soileRouter.setDeploymentOptions(opts);
 		@SuppressWarnings("rawtypes")
-		List<Future> deploymentFutures = new LinkedList<Future>();
+		List<Future<String>> deploymentFutures = new LinkedList<Future<String>>();
 		deploymentFutures.add(addDeployedVerticle(vertx.deployVerticle(new SoileUserManagementVerticle(), opts), "UserManagement"));
 		deploymentFutures.add(addDeployedVerticle(vertx.deployVerticle(soileRouter, opts), "Router"));
 		deploymentFutures.add(addDeployedVerticle(vertx.deployVerticle(new gitProviderVerticle(SoileConfigLoader.getServerProperty("gitVerticleAddress"), SoileConfigLoader.getServerProperty("soileGitFolder"),LOGGER.getLevel()), opts ), "Git"));
 		deploymentFutures.add(addDeployedVerticle(vertx.deployVerticle(new GitManagerVerticle(), opts ), "GitManager"));
 		deploymentFutures.add(addDeployedVerticle(vertx.deployVerticle(new PermissionVerticle(), opts ), "Permissions"));
-		return CompositeFuture.all(deploymentFutures).mapEmpty();
+		return Future.all(deploymentFutures).mapEmpty();
 	}
 	
 	Future<Void> setupConfig()
@@ -206,6 +206,7 @@ public class SoileServerVerticle extends AbstractVerticle {
 		if(SoileConfigLoader.getServerBooleanProperty("useSSL", false))
 		{
 			LOGGER.debug("Using HTTPS");	
+			
 			String sslStoreFile = SoileConfigLoader.getServerProperty("sslStoreFile");
 			opts.setSsl(true);
 			if(sslStoreFile.endsWith(".p12"))
@@ -214,20 +215,20 @@ public class SoileServerVerticle extends AbstractVerticle {
 			.setPath(SoileConfigLoader.getServerProperty("sslStoreFile"))
 				.setPassword(SoileConfigLoader.getServerProperty("sslSecret"))
 				.setAlias("soile2");
-				opts.setPfxKeyCertOptions(keyOptions);
+				opts.setKeyCertOptions(keyOptions);				
 			}
 			if(sslStoreFile.endsWith(".pem"))
 			{
 				PemKeyCertOptions keyOptions = new PemKeyCertOptions()
 													.setCertPath(SoileConfigLoader.getServerProperty("sslStoreFile"))
 													.setKeyPath(SoileConfigLoader.getServerProperty("sslSecret"));
-				opts.setPemKeyCertOptions(keyOptions);
+				opts.setKeyCertOptions(keyOptions);
 			}
 		
 		}
 		
 		HttpServer server = vertx.createHttpServer(opts).requestHandler(soileRouter.getRouter());
 		int httpPort = http_config.getInteger("port", SoileConfigLoader.getServerIntProperty("port"));			
-		return Future.<HttpServer>future(promise -> server.listen(httpPort,promise)).onSuccess(started -> { LOGGER.debug("Http Server started listening");}).mapEmpty();	
+		return server.listen(httpPort).onSuccess(started -> { LOGGER.debug("Http Server started listening");}).mapEmpty();	
 	}
 }

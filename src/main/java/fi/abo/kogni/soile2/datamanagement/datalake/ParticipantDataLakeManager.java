@@ -101,7 +101,7 @@ public class ParticipantDataLakeManager{
 	public Future<Void> deleteParticipantData(Participant p)
 	{
 		ParticipantFileResults resultFolder = new ParticipantFileResults(p.getID()); 
-		return vertx.fileSystem().deleteRecursive(resultFolder.getParticipantFolderPath(datalakedirectory), true);
+		return vertx.fileSystem().deleteRecursive(resultFolder.getParticipantFolderPath(datalakedirectory));
 	}
 	/**
 	 * Get a File from a TaskFileResult

@@ -28,7 +28,7 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.http.impl.MimeMapping;
+import io.vertx.core.http.MimeMapping;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
@@ -103,7 +103,7 @@ public class ObjectGenerator {
 				apiExperiment.setUUID(experiment.getUUID());				
 
 				ConcurrentHashMap<String, JsonObject> elements = new ConcurrentHashMap<String, JsonObject>();
-				List<Future> partFutures = new LinkedList<Future>();
+				List<Future<Void>> partFutures = new LinkedList<Future<Void>>();
 				for(Object item : ExperimentDef.getJsonArray("items"))
 				{
 					JsonObject current = (JsonObject) item;
@@ -124,7 +124,7 @@ public class ObjectGenerator {
 									.put("outputs", current.getJsonArray("outputs",new JsonArray()));
 									elements.put(current.getString("instanceID"), new JsonObject().put("elementType", "task")
 											.put("data",taskInstance));
-								})
+								}).mapEmpty()
 								);
 					}
 					if(current.getString("type").equals("filter"))
@@ -151,13 +151,13 @@ public class ObjectGenerator {
 									elements.put(current.getString("instanceID"), 
 											new JsonObject().put("elementType", "experiment")
 											.put("data", experimentInstance));
-								})
+								}).mapEmpty()
 								);
 
 					}
 				}
 				//deploymentFutures.add(Future.<String>future(promise -> vertx.deployVerticle("js:templateManager.js", opts, promise)));
-				CompositeFuture.all(partFutures).mapEmpty().onSuccess(Void -> {
+				Future.all(partFutures).mapEmpty().onSuccess(Void -> {
 					// once all is done, we put it in in the right order.
 					for(Object item : ExperimentDef.getJsonArray("items"))
 					{
@@ -246,7 +246,7 @@ public class ObjectGenerator {
 				apiProject.setVersion(project.getCurrentVersion());
 				apiProject.setUUID(project.getUUID());							
 				ConcurrentHashMap<String, JsonObject> tasks = new ConcurrentHashMap<String, JsonObject>();
-				List<Future> taskFutures = new LinkedList<Future>();
+				List<Future<Void>> taskFutures = new LinkedList<Future<Void>>();
 				for(Object item : projectDef.getJsonArray("tasks"))
 				{
 					JsonObject current = (JsonObject) item;
@@ -265,17 +265,17 @@ public class ObjectGenerator {
 								.put("codeType", task.getCodeType())
 								.put("outputs", current.getJsonArray("outputs",new JsonArray()));
 								tasks.put(current.getString("name"), taskInstance);
-							})
+							}).mapEmpty()
 							);
 				}
-				CompositeFuture.all(taskFutures).mapEmpty().onSuccess(Void -> {
+				Future.all(taskFutures).mapEmpty().onSuccess(Void -> {
 					LinkedList<JsonObject> taskList = new LinkedList<JsonObject>();
 					taskList.addAll(tasks.values());
 					JsonArray taskArray = new JsonArray(taskList);
 					apiProject.setTasks(taskArray);
 					// and now we do the experiments. Since they could in theory refer back to the same unique tasks, we need to have created the tasks first.
 					ConcurrentHashMap<String, JsonObject> experiments = new ConcurrentHashMap<String, JsonObject>();
-					List<Future> experimentFutures = new LinkedList<Future>();
+					List<Future<Void>> experimentFutures = new LinkedList<Future<Void>>();
 					// and for filters. This should work even without
 					JsonArray filters = apiProject.getFilters();
 					for(Object item : projectDef.getJsonArray("filters", new JsonArray()))
@@ -296,11 +296,11 @@ public class ObjectGenerator {
 											   .put("random", current.getBoolean("random", true));
 									updateExperimentElementTargets(expinstance);
 									experiments.put(current.getString("name"), expinstance);								
-								})
+								}).mapEmpty()
 								);						
 					}
 					// once the futures are set up, wait for them do be done and then finish up.
-					CompositeFuture.all(experimentFutures).mapEmpty()
+					Future.all(experimentFutures).mapEmpty()
 					.onSuccess(Void2 -> {
 						LinkedList<JsonObject> expList = new LinkedList<JsonObject>();
 						expList.addAll(experiments.values());
@@ -451,12 +451,12 @@ public class ObjectGenerator {
 				JsonArray resources = TaskDef.getJsonArray("resources", new JsonArray());
 				Promise<String> versionPromise = Promise.promise();
 				Future<String> versionFuture = versionPromise.future();
-				List<Future> composite = new LinkedList<>();
+				List<Future<String>> composite = new LinkedList<>();
 				LinkedList<Future<String>> chain = new LinkedList<>();
 				chain.add(versionFuture);
 				for(int i = 0; i < resources.size(); ++i)
 				{
-					SOILEUpload upload = SOILEUpload.create(Path.of(dataDir, resources.getString(i)).toString(), resources.getString(i), MimeMapping.getMimeTypeForFilename(resources.getString(i)));
+					SOILEUpload upload = SOILEUpload.create(Path.of(dataDir, resources.getString(i)).toString(), resources.getString(i), MimeMapping.mimeTypeForFilename(resources.getString(i)));
 					// create all in a compose chain...
 					String resourceName = resources.getString(i);
 					chain.add(chain.getLast().compose(newVersion -> {
@@ -466,7 +466,7 @@ public class ObjectGenerator {
 					composite.add(chain.getLast());
 				}
 				versionPromise.complete(task.getCurrentVersion());
-				CompositeFuture.all(composite)
+				Future.all(composite)
 				.onSuccess(done -> {
 					LOGGER.debug("File(s) added");
 					chain.getLast().onSuccess(latestVersion ->

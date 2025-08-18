@@ -24,7 +24,7 @@ import fi.abo.kogni.soile2.utils.WebObjectCreator;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.http.impl.MimeMapping;
+import io.vertx.core.http.MimeMapping;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -791,15 +791,15 @@ public class ParticipationRouterTest extends SoileWebTest{
 	protected Future<Void> submitFilesAndResults(WebClient client, List<File> uploads, JsonObject resultData, String instanceID)
 	{
 		Promise<Void> submittedPromise = Promise.promise();
-		List<Future> submissionFutures = new LinkedList<Future>();
+		List<Future<Void>> submissionFutures = new LinkedList<Future<Void>>();
 		ConcurrentLinkedDeque<JsonObject> uploadObjects = new ConcurrentLinkedDeque<>();
 		for(File f : uploads)
 		{		
 			Promise done = Promise.promise();
-			submissionFutures.add(done.future());
-			uploadResult(client, instanceID, f, f.getName(), MimeMapping.getMimeTypeForFilename(f.getName()))
+			submissionFutures.add(done.future().mapEmpty());
+			uploadResult(client, instanceID, f, f.getName(), MimeMapping.mimeTypeForFilename(f.getName()))
 			.onSuccess(id -> {
-				uploadObjects.add(new JsonObject().put("fileformat", MimeMapping.getMimeTypeForFilename(f.getName()))
+				uploadObjects.add(new JsonObject().put("fileformat", MimeMapping.mimeTypeForFilename(f.getName()))
 						.put("filename", f.getName())
 						.put("targetid", id));				
 				done.complete();
@@ -807,7 +807,7 @@ public class ParticipationRouterTest extends SoileWebTest{
 			})
 			.onFailure(err -> done.fail(err));
 		}
-		CompositeFuture.all(submissionFutures).onSuccess(allSubmitted -> {
+		Future.all(submissionFutures).onSuccess(allSubmitted -> {
 			POST(client, "/study/" + instanceID + "/getcurrenttaskinfo", null, null)
 			.onSuccess(response -> {
 				JsonArray fileResults = resultData.getJsonObject("resultData").getJsonArray("fileData");

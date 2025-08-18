@@ -160,7 +160,7 @@ public class ParticipantHandler {
 				
 				if(deleteFiles)
 				{
-					vertx.fileSystem().deleteRecursive(results.getParticipantFolderPath(dataLakeFolder), true)
+					vertx.fileSystem().deleteRecursive(results.getParticipantFolderPath(dataLakeFolder))
 					.onSuccess(filesDeleted -> 			
 					{
 						//TODO: Need to change this, so that it is FIRST removed from the Study and THEN deleted from the participant db.... 

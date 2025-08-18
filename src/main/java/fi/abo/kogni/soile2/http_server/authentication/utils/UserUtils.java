@@ -85,7 +85,7 @@ public class UserUtils {
 		{
 			query = new JsonObject().put(unameField, username);
 		}  
-		dbclient.find(SoileConfigLoader.getdbProperty("userCollection"), query, res -> {
+		dbclient.find(SoileConfigLoader.getdbProperty("userCollection"), query).andThen(res -> {
 			if(res.succeeded())
 			{
 				List<JsonObject> dbResultList = res.result(); 				

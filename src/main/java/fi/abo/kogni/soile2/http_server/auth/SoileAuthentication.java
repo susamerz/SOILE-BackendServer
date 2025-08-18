@@ -7,13 +7,13 @@ import fi.abo.kogni.soile2.http_server.authentication.utils.UserUtils;
 import fi.abo.kogni.soile2.http_server.userManagement.SoileHashing;
 import fi.abo.kogni.soile2.http_server.userManagement.exceptions.DuplicateUserEntryInDBException;
 import fi.abo.kogni.soile2.utils.SoileConfigLoader;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.HashingStrategy;
+import io.vertx.ext.auth.hashing.HashingStrategy;
 import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.authentication.AuthenticationProvider;
+import io.vertx.ext.auth.authentication.Credentials;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.handler.HttpException;
 
@@ -41,26 +41,24 @@ public class SoileAuthentication implements AuthenticationProvider{
 
 
 	@Override
-	public void authenticate(JsonObject credentials, Handler<AsyncResult<User>> resultHandler) 
+	public Future<User> authenticate(Credentials credentials) 
 	{
 		// Authentication based on credentials provided (username/password)
 		LOGGER.debug("Trying to authenticate");
 		try {
 			//no credentials provided
-			if (credentials == null || credentials.getString("username") == null ) {
-
-				resultHandler.handle((Future.failedFuture("Invalid Credentials.")));
-				return;
+			if (credentials == null || credentials.toJson().getString("username") == null ) {
+				return Future.failedFuture("Invalid Credentials.");				
 			}
-			if (credentials.getString(SoileConfigLoader.getUserdbField("passwordField")) == null 
-					||credentials.getString(SoileConfigLoader.getUserdbField("passwordField")).isEmpty())
+			if (credentials.toJson().getString(SoileConfigLoader.getUserdbField("passwordField")) == null 
+					||credentials.toJson().getString(SoileConfigLoader.getUserdbField("passwordField")).isEmpty())
 
 			{
-				resultHandler.handle((Future.failedFuture("Invalid Password.")));
-				return;  
+				return Future.failedFuture("Invalid Password.");				 
 			}
 			LOGGER.debug("requesting user entry from database");
-			String username = credentials.getString("username");
+			String username = credentials.toJson().getString("username");
+			Promise<User> resultFuture = Promise.promise();
 			UserUtils.getUserDataFromCollection(client, username , res ->
 			{
 				if(res.succeeded())
@@ -68,33 +66,32 @@ public class SoileAuthentication implements AuthenticationProvider{
 					try
 					{
 						LOGGER.debug("Found user " + username + " , requesting handling");			    			
-						User user = getUser(res.result(),credentials);
-						resultHandler.handle(Future.succeededFuture(user));
+						User user = getUser(res.result(),credentials.toJson());
+						resultFuture.complete(user);
 					}
 					catch(HttpException e)
 					{
 						LOGGER.error("Got an error while handling: " +e.getMessage());
-						LOGGER.debug(resultHandler);			    			
-						resultHandler.handle(Future.failedFuture(e));
+						resultFuture.fail(e);			    									
 					}
 				}			    	
 				else
 				{
 					if(res.cause() instanceof DuplicateUserEntryInDBException)
 					{			    			
-						resultHandler.handle(Future.failedFuture("Internal Server Error"));
+						resultFuture.fail("Internal Server Error");
 					}
 					else
 					{
-						resultHandler.handle(Future.failedFuture(res.cause()));	
+						resultFuture.fail(res.cause());	
 					}
 				}
 			});
+			return resultFuture.future();
 
 		} catch (RuntimeException e) {
-			LOGGER.error("Got an error while handling: " +e.getMessage());
-			resultHandler.handle(Future.failedFuture(e));
-			return;
+			LOGGER.error("Got an error while handling: " +e.getMessage());			
+			return Future.failedFuture(e);
 		}	
 	}
 

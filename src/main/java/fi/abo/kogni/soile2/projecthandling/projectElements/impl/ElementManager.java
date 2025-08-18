@@ -873,7 +873,7 @@ public class ElementManager<T extends ElementBase> {
 	public Future<String> handlePostFiles(String elementID, String elementVersion, String dirName, List<FileUpload> uploads)
 	{
 		Promise<String> filesUploadedPromise = Promise.promise();
-		List<Future> filesUploaded = new LinkedList<Future>();
+		List<Future<String>> filesUploaded = new LinkedList<Future<String>>();
 		LinkedList<Future<String>> chain = new LinkedList<>();		
 		chain.add(Future.succeededFuture(elementVersion));
 		for(FileUpload up : uploads)
@@ -885,7 +885,7 @@ public class ElementManager<T extends ElementBase> {
 			filesUploaded.add(chain.getLast());
 			
 		}
-		CompositeFuture.all(filesUploaded)		
+		Future.all(filesUploaded)		
 		.onSuccess(finished -> {
 			// this is done when the Composite is done.
 			// We need to update the versions to be able to keep track of added files, and to see whether they might be unnecessary.  

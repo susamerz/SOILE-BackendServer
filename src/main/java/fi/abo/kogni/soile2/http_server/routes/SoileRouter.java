@@ -1,5 +1,8 @@
 package fi.abo.kogni.soile2.http_server.routes;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -13,9 +16,10 @@ import fi.abo.kogni.soile2.projecthandling.projectElements.impl.Experiment;
 import fi.abo.kogni.soile2.projecthandling.projectElements.impl.Project;
 import fi.abo.kogni.soile2.projecthandling.projectElements.impl.Task;
 import fi.abo.kogni.soile2.projecthandling.projectElements.instance.AccessStudy;
+import io.netty.handler.codec.http.HttpObjectDecoder;
 import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.http.impl.HttpUtils;
-import io.vertx.core.net.impl.URIDecoder;
+import io.vertx.core.internal.net.RFC3986;
 import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.mongo.MongoAuthorization;
 import io.vertx.ext.mongo.MongoClient;
@@ -215,13 +219,13 @@ public class SoileRouter {
 	 */
 	public static String normalizePath(String inputPath)
 	{
-		String uriDecodedPath = URIDecoder.decodeURIComponent(inputPath, false);
+		String uriDecodedPath = URLDecoder.decode(inputPath, StandardCharsets.UTF_8);
 		// if the normalized path is null it cannot be resolved
 		if (uriDecodedPath == null) {			
 			return null;
 		}
 		// will normalize and handle all paths as UNIX paths
-		String treatedPath = HttpUtils.removeDots(uriDecodedPath.replace('\\', '/'));
+		String treatedPath = RFC3986.removeDotSegments(uriDecodedPath.replace('\\', '/'));
 		return treatedPath;
 	}
 }

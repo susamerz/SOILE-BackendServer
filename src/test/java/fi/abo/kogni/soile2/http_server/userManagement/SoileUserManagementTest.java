@@ -83,13 +83,13 @@ public class SoileUserManagementTest extends SoileVerticleTest{
 						{
 							JsonObject obj = (JsonObject)res.result().body();					
 							context.assertEquals("Success",obj.getValue("Result"));
-							vertx.eventBus().request("soile.umanager.removeUser", userObject, remres ->
+							vertx.eventBus().request("soile.umanager.removeUser", userObject).andThen(remres ->
 							{
 								if(remres.succeeded())
 								{
 									Async iasync = context.async();
 									//lets try to remove it again;
-									vertx.eventBus().request("soile.umanager.removeUser", userObject, rrres ->
+									vertx.eventBus().request("soile.umanager.removeUser", userObject).andThen( rrres ->
 									{
 										if(rrres.succeeded())
 										{

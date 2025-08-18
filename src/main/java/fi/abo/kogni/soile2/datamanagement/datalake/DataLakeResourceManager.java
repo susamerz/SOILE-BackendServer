@@ -19,7 +19,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.file.CopyOptions;
-import io.vertx.core.http.impl.MimeMapping;
+import io.vertx.core.http.MimeMapping;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.FileUpload;
 
@@ -64,7 +64,7 @@ public class DataLakeResourceManager extends GitDataRetriever<DataLakeFile> {
 			String targetFileName = dataFile.getFileInDataLake();		
 			JsonObject fileContents = new JsonObject().put("filename", gitFileName)
 					.put("targetFile", targetFileName)
-					.put("format", MimeMapping.getMimeTypeForFilename(gitFileName));
+					.put("format", MimeMapping.mimeTypeForFilename(gitFileName));
 			eb.request("soile.git.writeGitResourceFile", targetGitFile.toJson().put("data", fileContents))
 			.onSuccess(reply -> {
 						LOGGER.debug("Git File written");
@@ -100,7 +100,7 @@ public class DataLakeResourceManager extends GitDataRetriever<DataLakeFile> {
 			LOGGER.debug("File moved to target folder");
 			String gitFileName = targetGitFile.getFileName() == null ? fileUpload.fileName() : targetGitFile.getFileName();
 			String targetFileName = dataFile.getFileInDataLake();		
-			String fileType = MimeMapping.getMimeTypeForFilename(gitFileName) == null ? fileUpload.contentType() : MimeMapping.getMimeTypeForFilename(gitFileName);    
+			String fileType = MimeMapping.mimeTypeForFilename(gitFileName) == null ? fileUpload.contentType() : MimeMapping.mimeTypeForFilename(gitFileName);    
 			JsonObject fileContents = new JsonObject().put("filename", gitFileName)
 					.put("targetFile", targetFileName)
 					.put("format", fileType);
@@ -199,7 +199,7 @@ public class DataLakeResourceManager extends GitDataRetriever<DataLakeFile> {
 		.compose(exists -> {
 			if(exists)
 			{
-				return vertx.fileSystem().deleteRecursive(targetFolder, true);
+				return vertx.fileSystem().deleteRecursive(targetFolder);
 			}
 			else
 			{
@@ -229,9 +229,8 @@ public class DataLakeResourceManager extends GitDataRetriever<DataLakeFile> {
 		.onSuccess(folderCreated -> {			
 			vertx.fileSystem().createTempFile(targetFolder , "", "","rw-rw----")
 			.onSuccess(tempFileName -> {
-				vertx.executeBlocking(writing -> {
-					try {
-						FileOutputStream outputStream = new FileOutputStream(tempFileName);
+				vertx.executeBlocking( () -> {
+					FileOutputStream outputStream = new FileOutputStream(tempFileName);
 						{
 							int data = is.read();
 							while(data != -1){
@@ -240,14 +239,9 @@ public class DataLakeResourceManager extends GitDataRetriever<DataLakeFile> {
 							}
 						}	
 						outputStream.close();
-					}
-					catch(IOException e)
-					{
-						writing.fail(e);
-					}
-					writing.complete();
+						return "";					
 				}).onSuccess(done -> {
-					GitDataLakeFile trf = new GitDataLakeFile(targetGitFile.getRepoID(), tempFileName.replace(targetFolder, ""), targetGitFile.getFileName(), MimeMapping.getMimeTypeForFilename(targetGitFile.getFileName()));
+					GitDataLakeFile trf = new GitDataLakeFile(targetGitFile.getRepoID(), tempFileName.replace(targetFolder, ""), targetGitFile.getFileName(), MimeMapping.mimeTypeForFilename(targetGitFile.getFileName()));
 					dataLakeFilePromise.complete(trf);
 				})
 				.onFailure(err -> dataLakeFilePromise.fail(err));

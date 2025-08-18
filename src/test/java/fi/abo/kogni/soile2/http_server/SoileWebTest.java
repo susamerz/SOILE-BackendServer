@@ -15,7 +15,7 @@ import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.impl.MimeMapping;
+import io.vertx.core.http.MimeMapping;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpRequest;
@@ -463,7 +463,7 @@ public abstract class SoileWebTest extends SoileVerticleTest implements UserVert
 	{
 		 
 		HttpRequest<Buffer> request = client.post(UriEncoder.encode(URL));
-		String currentMime = mimeType == null ? MimeMapping.getMimeTypeForFilename(fileName) : mimeType;  
+		String currentMime = mimeType == null ? MimeMapping.mimeTypeForFilename(fileName) : mimeType;  
 		if(queryParameters != null)
 		{
 			for(String fieldname : queryParameters.fieldNames())
@@ -510,7 +510,7 @@ public abstract class SoileWebTest extends SoileVerticleTest implements UserVert
 		MultipartForm submissionForm = MultipartForm.create();
 		for(FileDescriptor f : files)
 		{			
-				submissionForm.binaryFileUpload("files", f.getFileName(), f.getFilePath(), MimeMapping.getMimeTypeForFilename(f.getFileName()));
+				submissionForm.binaryFileUpload("files", f.getFileName(), f.getFilePath(), MimeMapping.mimeTypeForFilename(f.getFileName()));
 		}
 		return request.sendMultipartForm(submissionForm).compose(response -> 
 		{

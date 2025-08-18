@@ -177,8 +177,8 @@ public class APITask extends APIElementBase<Task> {
 		Promise<Boolean> codePromise = Promise.promise();
 		GitFile g = new GitFile("Code.obj", targetRepository, this.getVersion());
 		LOGGER.debug("Loading Code Object");
-		List<Future> loadedList = new LinkedList<>();
-		loadedList.add(codePromise.future());
+		List<Future<Void>> loadedList = new LinkedList<>();
+		loadedList.add(codePromise.future().mapEmpty());
 		eb.request("soile.git.getGitFileContents", g.toJson()).onSuccess(codeReply -> {
 			setCode((String)codeReply.body());
 			codePromise.complete(true);
@@ -204,7 +204,7 @@ public class APITask extends APIElementBase<Task> {
 				codePromise.fail(err);
 			}
 		});			
-		return CompositeFuture.all(loadedList).map(true);
+		return Future.all(loadedList).map(true);
 	}	
 	@Override
 	public Function<Object,Object> getFieldFilter(String fieldName)

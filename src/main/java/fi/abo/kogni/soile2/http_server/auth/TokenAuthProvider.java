@@ -13,6 +13,8 @@ import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.User;
+import io.vertx.ext.auth.authorization.Authorization;
+import io.vertx.ext.auth.authorization.OrAuthorization;
 import io.vertx.ext.auth.authorization.RoleBasedAuthorization;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
@@ -74,8 +76,9 @@ public class TokenAuthProvider {
 				currentUser.principal().put(SoileConfigLoader.getSessionProperty("userRoles"), new JsonArray().add(Roles.Participant));
 				currentUser.principal().put("tokenPermission", SoilePermissionProvider.buildPermissionString(requestedStudyID, PermissionType.EXECUTE));
 				// we add 
-				currentUser.authorizations().add("TokenProvider", RoleBasedAuthorization.create(Roles.Participant.toString()));
-				currentUser.authorizations().add("TokenProvider", SoilePermissionProvider.buildPermission(requestedStudyID, PermissionType.EXECUTE));
+				Authorization TokenAuth = OrAuthorization.create().addAuthorization(RoleBasedAuthorization.create(Roles.Participant.toString()))
+										  .addAuthorization(SoilePermissionProvider.buildPermission(requestedStudyID, PermissionType.EXECUTE));				
+				currentUser.authorizations().put("TokenProvider", TokenAuth);				
 				userPromise.complete(currentUser);
 			})
 			.onFailure(err -> userPromise.fail(err));

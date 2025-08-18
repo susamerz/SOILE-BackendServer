@@ -10,7 +10,7 @@ import fi.abo.kogni.soile2.projecthandling.projectElements.impl.ElementManager;
 import fi.abo.kogni.soile2.projecthandling.projectElements.impl.Task;
 import fi.abo.kogni.soile2.projecthandling.utils.ObjectGenerator;
 import fi.abo.kogni.soile2.utils.SoileCommUtils;
-import io.vertx.core.http.impl.MimeMapping;
+import io.vertx.core.http.MimeMapping;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -29,7 +29,7 @@ public class APITaskTest extends SoileVerticleTest {
 		.onSuccess(apiTask -> {
 			// create a new upload.
 			String fileName = vertx.fileSystem().createTempFileBlocking("SomeFile", ".ending");			
-			SOILEUpload upload = SOILEUpload.create(fileName, "Fun.jpg", MimeMapping.getMimeTypeForFilename("Fun.jpg"));
+			SOILEUpload upload = SOILEUpload.create(fileName, "Fun.jpg", MimeMapping.mimeTypeForFilename("Fun.jpg"));
 			grm.writeUploadToGit(new GitFile("NewFile",TaskManager.getGitIDForUUID(apiTask.getUUID()),apiTask.getVersion()), upload)
 			.onSuccess(newVersion -> {
 				Async newVerAsync = context.async();

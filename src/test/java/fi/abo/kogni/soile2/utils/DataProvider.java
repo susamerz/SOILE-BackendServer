@@ -6,6 +6,7 @@ import java.nio.file.Files;
 
 import org.apache.commons.io.FileUtils;
 
+import io.vertx.core.Future;
 import io.vertx.ext.web.FileUpload;
 
 public class DataProvider {
@@ -73,5 +74,11 @@ public class DataProvider {
 		@Override
 		public boolean cancel() {
 			return false;
+		}
+
+		@Override
+		public Future<Void> delete() {
+			// TODO Auto-generated method stub
+			return Future.succeededFuture();
 		}
 }
