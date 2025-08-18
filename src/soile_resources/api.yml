@@ -1,9 +1,5 @@
 openapi: 3.0.0
 servers:
-  - description: SwaggerHub API Auto Mocking
-    url: https://virtserver.swaggerhub.com/THOMASPFAU_1/SOILE_Backend/1.0.0
-  - description: SwaggerHub API Auto Mocking
-    url: https://virtserver.swaggerhub.com/THOMASPFAU/SoileAPI/1.0.0
   - description: Soile Backend API
     url: https://soile-server.nbe.aalto.fi/
 info:
