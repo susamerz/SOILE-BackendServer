@@ -49,7 +49,7 @@ public abstract class MongoTest extends SoileBaseTest {
 				.net(Start.to(Net.class).initializedWith(net))
 				.processOutput(Start.to(ProcessOutput.class).initializedWith(ProcessOutput.silent()).withTransitionLabel("no output"))
 				.build();		
-		state = MONGO.start(Version.Main.V5_0);		
+		state = MONGO.start(Version.Main.V7_0);		
 	}	
 
 	@Override
