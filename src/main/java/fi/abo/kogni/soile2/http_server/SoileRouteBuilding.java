@@ -141,7 +141,6 @@ public class SoileRouteBuilding extends AbstractVerticle {
 	@SuppressWarnings("rawtypes")
 	public void stop(Promise<Void> stopPromise) {
 		soileRouter.clear();
-
 		List<Future<Void>> undeploymentFutures = new LinkedList<Future<Void>>();
 		for(MessageConsumer consumer : consumers)
 		{
