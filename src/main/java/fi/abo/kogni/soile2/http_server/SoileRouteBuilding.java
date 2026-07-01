@@ -66,12 +66,8 @@ import io.vertx.ext.web.handler.LoggerHandler;
 import io.vertx.ext.web.openapi.router.RouterBuilder;
 import io.vertx.ext.web.openapi.router.impl.RouterBuilderImpl;
 import io.vertx.ext.web.sstore.LocalSessionStore;
-<<<<<<< HEAD
-
-=======
 import io.vertx.openapi.contract.OpenAPIContract;
 import io.vertx.openapi.validation.RequestUtils;
->>>>>>> c270e74 (Convert to vertx5)
 /**
  * Verticle that handles Route Building for the Soile Backend Platform
  * 
