@@ -3,6 +3,7 @@ package fi.abo.kogni.soile2.http_server.auth;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -13,6 +14,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.authentication.AuthenticationProvider;
 import io.vertx.ext.auth.authentication.UsernamePasswordCredentials;
+import io.vertx.ext.web.Session;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.HttpException;
 import io.vertx.ext.web.impl.UserContextInternal;
@@ -158,7 +160,7 @@ public class SoileFormLoginHandler extends SoileAuthHandler {
 			jwtCreator.getToken(ctx).onSuccess(token ->
 			{
 				ctx.response().setStatusCode(200)
-				.putHeader(HttpHeaders.CONTENT_TYPE, "application/json; charset=utf-8")
+				.putHeader(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=utf-8")
 				.end(new JsonObject().put("token",token).encode());			
 			}).onFailure(fail ->
 			{
@@ -250,7 +252,7 @@ public class SoileFormLoginHandler extends SoileAuthHandler {
 				switch (statusCode) {
 				case 302:
 					ctx.response()
-					.putHeader(HttpHeaders.LOCATION, payload)
+					.putHeader(HttpHeaderNames.LOCATION, payload)
 					.setStatusCode(302)
 					.end("Redirecting to " + payload + ".");
 					return;
@@ -277,7 +279,7 @@ public class SoileFormLoginHandler extends SoileAuthHandler {
 		// Preflight requests should not be subject to security due to the reason UAs will remove the Authorization header
 		if (request.method() == HttpMethod.OPTIONS) {
 			// check if there is a access control request header
-			final String accessControlRequestHeader = ctx.request().getHeader(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS);
+			final String accessControlRequestHeader = ctx.request().getHeader(HttpHeaderNames.ACCESS_CONTROL_REQUEST_HEADERS);
 			if (accessControlRequestHeader != null) {
 				// lookup for the Authorization header
 				for (String ctrlReq : accessControlRequestHeader.split(",")) {
