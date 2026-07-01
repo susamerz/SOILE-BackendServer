@@ -238,9 +238,8 @@ public class PasswordReset extends SoileAuthHandler {
 	}
 
 	private Future<Void> sendMail(String mailAddress, String token) {
-		Promise<Void> promise = Promise.<Void>promise();
-		this.vertx.executeBlocking(future -> {
-			try {
+		
+		return this.vertx.executeBlocking(() -> {
 				String domain = SoileConfigLoader.getServerProperty("domain");
 				String subject = "SOILE Password Reset";
 				String from = "no-reply@" + domain;
@@ -260,19 +259,9 @@ public class PasswordReset extends SoileAuthHandler {
 				message.setSubject(subject);
 				message.setText(content);
 				Transport.send(message);
-				future.complete();
-			} catch (Exception e) {
-				LOGGER.error("Failed to send password reset email", e);
-				future.fail(e);
-			}
-		}, res -> {
-			if (res.succeeded()) {
-				promise.complete();
-			} else {
-				promise.fail(res.cause());
-			}
+				return null;
+			
 		});
-		return promise.future();
 
 	}
 

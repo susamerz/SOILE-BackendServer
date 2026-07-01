@@ -116,7 +116,8 @@ public abstract class SoileAuthHandler implements AuthenticationHandler{
 			if (authN.succeeded()) {
 				User authenticated = authN.result();
 				LOGGER.debug("User added to to context");
-				ctx.setUser(authenticated);
+				// TODO: according to new documentation this should be done in AuthProvider? Figure out how/where
+				//ctx.setUser(authenticated);
 				Session session = ctx.session();
 				if (session != null) {
 					// the user has upgraded from unauthenticated to authenticated
